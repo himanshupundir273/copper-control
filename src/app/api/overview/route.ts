@@ -2,23 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getDashboardData } from '@/lib/services/analytics-service';
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const includeDemoParam = searchParams.get('includeDemo');
-
     const settingsRes = await query<{ key: string; value: string; description: string }>(
-      'SELECT key, value, description FROM system_settings ORDER BY key'
+      "SELECT key, value, description FROM system_settings WHERE key <> 'SHOW_DEMO_DATA' ORDER BY key"
     );
-    const settingsMap = Object.fromEntries(settingsRes.rows.map((r) => [r.key, r.value]));
-    const includeDemo =
-      includeDemoParam !== null
-        ? includeDemoParam !== 'false'
-        : settingsMap.SHOW_DEMO_DATA !== 'false';
+    // Platform strictly operates in Live Production Mode only
+    const includeDemo = false;
 
-    const demoFilterCoil = includeDemo ? '' : 'WHERE c.is_demo = FALSE';
-    const demoFilterInv = includeDemo ? '' : 'WHERE inv.is_demo = FALSE';
-    const demoFilterBatch = includeDemo ? '' : 'WHERE b.is_demo = FALSE';
+    const demoFilterCoil = 'WHERE c.is_demo = FALSE';
+    const demoFilterInv = 'WHERE inv.is_demo = FALSE';
+    const demoFilterBatch = 'WHERE b.is_demo = FALSE';
 
     const [
       dashboard,

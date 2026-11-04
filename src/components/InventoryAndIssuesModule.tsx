@@ -577,11 +577,6 @@ export function InventoryAndIssuesModule({
                       >
                         {c.coil_code}
                       </button>
-                      {c.is_demo && (
-                        <span className="ml-1.5 px-1 py-0.5 text-[9px] rounded bg-amber-100 text-amber-800">
-                          DEMO
-                        </span>
-                      )}
                     </td>
                     <td className="py-2.5 px-2 font-mono text-slate-600">
                       {c.supplier_coil_number || c.bobbin_number || '-'}

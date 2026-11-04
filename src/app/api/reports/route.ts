@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
     const fromDate = searchParams.get('fromDate') || undefined;
     const toDate = searchParams.get('toDate') || undefined;
     const batchSearch = searchParams.get('batchSearch') || undefined;
-    const includeDemo = searchParams.get('includeDemo') !== 'false';
 
     const rows = await generateReportData({
       reportKey,
@@ -27,7 +26,7 @@ export async function GET(req: NextRequest) {
       fromDate,
       toDate,
       batchSearch,
-      includeDemo,
+      includeDemo: false,
     });
 
     return NextResponse.json({ ok: true, reportKey, rows });

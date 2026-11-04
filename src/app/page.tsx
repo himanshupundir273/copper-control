@@ -45,13 +45,11 @@ export default function CopperControlTowerApp() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchOverview = useCallback(async (overrideIncludeDemo?: boolean) => {
+  const fetchOverview = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const qs =
-        overrideIncludeDemo !== undefined ? `?includeDemo=${overrideIncludeDemo}` : '';
-      const res = await fetch(`/api/overview${qs}`);
+      const res = await fetch('/api/overview');
       const json = await res.json();
       if (!res.ok || json.error) {
         throw new Error(json.error || 'Failed to load Copper Control Tower data');
@@ -157,29 +155,10 @@ export default function CopperControlTowerApp() {
           </div>
 
           <div className="flex items-center gap-3">
-            {data && (
-              <button
-                onClick={async () => {
-                  await fetch('/api/masters', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      action: 'UPDATE_SETTING',
-                      key: 'SHOW_DEMO_DATA',
-                      value: data.includeDemo ? 'false' : 'true',
-                    }),
-                  });
-                  await fetchOverview(!data.includeDemo);
-                }}
-                className={`px-3 py-1.5 rounded-lg border text-xs font-mono font-semibold transition-all ${
-                  data.includeDemo
-                    ? 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100'
-                    : 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100'
-                }`}
-              >
-                {data.includeDemo ? 'MODE: DEMO + LIVE' : 'MODE: LIVE ONLY'}
-              </button>
-            )}
+            <span className="px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-mono font-semibold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              LIVE PRODUCTION MODE
+            </span>
 
             <button
               onClick={() => fetchOverview()}

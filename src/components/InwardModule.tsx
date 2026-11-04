@@ -594,11 +594,6 @@ export function InwardModule({
                       >
                         {inv.invoice_number}
                       </button>
-                      {inv.is_demo && (
-                        <span className="ml-1.5 px-1.5 py-0.5 text-[9px] rounded bg-amber-100 text-amber-800">
-                          DEMO
-                        </span>
-                      )}
                     </td>
                     <td className="py-2.5 px-2">
                       <div className="font-semibold text-slate-900">{inv.company_name}</div>

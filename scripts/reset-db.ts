@@ -10,9 +10,9 @@ async function main() {
     console.log('Cleared local .data directory.');
   }
   await runMigrations();
-  await seedDatabase({ includeDemoTransactions: true });
+  await seedDatabase({ includeDemoTransactions: false });
   await closeDatabase();
-  console.log('Database reset, re-seeded, and closed cleanly.');
+  console.log('Database reset, master data seeded (Live Mode Only), and closed cleanly.');
 }
 
 main().catch((err) => {

@@ -5,8 +5,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get('q') || undefined;
-    const includeDemo = searchParams.get('includeDemo') !== 'false';
-    const graph = await buildTraceabilityGraph(q, includeDemo);
+    const graph = await buildTraceabilityGraph(q, false);
     return NextResponse.json({ ok: true, graph });
   } catch (err: any) {
     console.error('GET /api/traceability error:', err);

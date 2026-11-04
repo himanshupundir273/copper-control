@@ -207,7 +207,7 @@ export async function ensureDatabaseInitialized(): Promise<void> {
           );
           if (Number(res.rows[0]?.count ?? 0) === 0) {
             const { seedDatabase } = await import('./seed-data');
-            await seedDatabase({ includeDemoTransactions: true });
+            await seedDatabase({ includeDemoTransactions: false });
           }
         }
       } catch (err) {
