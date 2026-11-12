@@ -2,26 +2,148 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { purgeDemoData, seedDatabase } from '@/lib/seed-data';
 
+function makeCode(prefix: string, name: string): string {
+  const clean = name
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 14);
+  const rand = Math.floor(100 + Math.random() * 900);
+  return `${prefix}-${clean || 'ITEM'}-${rand}`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action } = body;
 
+    if (action === 'ADD_COMPANY') {
+      const name = String(body.name || '').trim();
+      if (!name) throw new Error('Company name is required.');
+      const code = (body.code ? String(body.code).trim().toUpperCase() : makeCode('CMP', name));
+      const prefix = (
+        body.coilPrefix
+          ? String(body.coilPrefix).trim().toUpperCase()
+          : name.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 3) || 'CMP'
+      );
+      const res = await query<{ id: number }>(
+        `INSERT INTO companies (code, name, legal_name, coil_prefix, is_active)
+         VALUES ($1, $2, $3, $4, TRUE)
+         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, is_active = TRUE
+         RETURNING id`,
+        [code, name, body.legalName?.trim() || name, prefix]
+      );
+      return NextResponse.json({ ok: true, createdId: res.rows[0]?.id });
+    }
+
+    if (action === 'ADD_SUPPLIER') {
+      const name = String(body.name || '').trim();
+      if (!name) throw new Error('Supplier / Vendor name is required.');
+      const code = body.code ? String(body.code).trim().toUpperCase() : makeCode('SUP', name);
+      const city = body.city ? String(body.city).trim() : 'India';
+      const res = await query<{ id: number }>(
+        `INSERT INTO suppliers (code, name, city, is_active)
+         VALUES ($1, $2, $3, TRUE)
+         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, city = EXCLUDED.city, is_active = TRUE
+         RETURNING id`,
+        [code, name, city]
+      );
+      return NextResponse.json({ ok: true, createdId: res.rows[0]?.id });
+    }
+
+    if (action === 'ADD_LOCATION') {
+      const name = String(body.name || '').trim();
+      if (!name) throw new Error('Storage location name is required.');
+      let plantId = Number(body.plantId || 0);
+      if (!plantId) {
+        const pRes = await query<{ id: number }>('SELECT id FROM plants WHERE is_active = TRUE ORDER BY id LIMIT 1');
+        plantId = pRes.rows[0]?.id || 1;
+      }
+      const code = body.code ? String(body.code).trim().toUpperCase() : makeCode('LOC', name);
+      const locationType = body.locationType || 'RAW_ROD_YARD';
+      const res = await query<{ id: number }>(
+        `INSERT INTO storage_locations (plant_id, code, name, location_type, is_active)
+         VALUES ($1, $2, $3, $4, TRUE)
+         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, is_active = TRUE
+         RETURNING id`,
+        [plantId, code, name, locationType]
+      );
+      return NextResponse.json({ ok: true, createdId: res.rows[0]?.id });
+    }
+
     if (action === 'ADD_DIAMETER') {
-      await query(
-        `INSERT INTO copper_diameters (diameter_mm, label, swg_awg_ref, category, standard_tolerance_mm, verification_status, notes)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      const mm = Number(body.diameterMm);
+      if (!mm || mm <= 0) throw new Error('Valid positive diameter in mm is required.');
+      const label = body.label?.trim() || `${mm.toFixed(2)} mm Wire / Rod`;
+      const category = body.category || (mm >= 5 ? 'RAW_ROD' : mm >= 1.2 ? 'RBD_MEDIUM' : 'FINE_WIRE');
+      const res = await query<{ id: number }>(
+        `INSERT INTO copper_diameters (diameter_mm, label, swg_awg_ref, category, standard_tolerance_mm, verification_status, notes, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+         ON CONFLICT (diameter_mm) DO UPDATE SET label = EXCLUDED.label, is_active = TRUE
+         RETURNING id`,
         [
-          Number(body.diameterMm),
-          body.label.trim(),
+          mm,
+          label,
           body.swgAwgRef?.trim() || null,
-          body.category || 'RBD_MEDIUM',
+          category,
           Number(body.standardToleranceMm || 0.01),
-          body.verificationStatus || 'PENDING_CONFIRMATION',
+          body.verificationStatus || 'VERIFIED',
           body.notes?.trim() || null,
         ]
       );
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, createdId: res.rows[0]?.id });
+    }
+
+    if (action === 'ADD_MATERIAL_CATEGORY') {
+      const name = String(body.name || '').trim();
+      if (!name) throw new Error('Material category name is required.');
+      const code = body.code ? String(body.code).trim().toUpperCase() : makeCode('MAT', name);
+      const gradeSpec = body.gradeSpec?.trim() || name;
+      const res = await query<{ id: number }>(
+        `INSERT INTO material_categories (code, name, grade_spec, description, is_active)
+         VALUES ($1, $2, $3, $4, TRUE)
+         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, is_active = TRUE
+         RETURNING id`,
+        [code, name, gradeSpec, body.description?.trim() || name]
+      );
+      return NextResponse.json({ ok: true, createdId: res.rows[0]?.id });
+    }
+
+    if (action === 'REMOVE_MASTER_ITEM') {
+      const entityType = String(body.entityType || '').toUpperCase();
+      const id = Number(body.id);
+      if (!id) throw new Error('Item ID is required to remove an option.');
+
+      const tableMap: Record<string, string> = {
+        COMPANY: 'companies',
+        SUPPLIER: 'suppliers',
+        LOCATION: 'storage_locations',
+        DIAMETER: 'copper_diameters',
+        MATERIAL_CATEGORY: 'material_categories',
+        MACHINE: 'machines',
+        BOBBIN: 'bobbin_types',
+        ROUTE: 'allowed_process_routes',
+      };
+
+      const tableName = tableMap[entityType];
+      if (!tableName) {
+        throw new Error(`Unsupported master entity type: ${entityType}`);
+      }
+
+      try {
+        if (entityType === 'DIAMETER') {
+          await query(
+            `DELETE FROM allowed_process_routes WHERE input_diameter_id = $1 OR output_diameter_id = $1`,
+            [id]
+          );
+        }
+        await query(`DELETE FROM ${tableName} WHERE id = $1`, [id]);
+      } catch {
+        // If referenced by existing invoices/coils/plants, soft-deactivate so it disappears from dropdowns
+        await query(`UPDATE ${tableName} SET is_active = FALSE WHERE id = $1`, [id]);
+      }
+
+      return NextResponse.json({ ok: true, removedId: id });
     }
 
     if (action === 'TOGGLE_DIAMETER_VERIFICATION') {
@@ -103,20 +225,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    if (action === 'ADD_LOCATION') {
-      await query(
-        `INSERT INTO storage_locations (plant_id, code, name, location_type)
-         VALUES ($1, $2, $3, $4)`,
-        [
-          Number(body.plantId),
-          body.code.trim().toUpperCase(),
-          body.name.trim(),
-          body.locationType || 'RBD_FLOOR',
-        ]
-      );
-      return NextResponse.json({ ok: true });
-    }
-
     if (action === 'UPDATE_SETTING') {
       await query(
         `UPDATE system_settings SET value = $1, updated_at = NOW() WHERE key = $2`,
@@ -144,4 +252,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

@@ -11,6 +11,7 @@ import {
   Search,
   ShieldCheck,
 } from 'lucide-react';
+import { PaginationBar, usePagination } from './PaginationBar';
 
 interface InventoryAndIssuesProps {
   mode: 'INVENTORY' | 'ISSUES';
@@ -115,6 +116,11 @@ export function InventoryAndIssuesModule({
     statusFilter,
     searchQuery,
   ]);
+
+  const coilsPager = usePagination<any>(filteredCoils, 10);
+  const scrapPager = usePagination<any>(scrapLots || [], 10);
+  const cableIssuesPager = usePagination<any>(cableIssues || [], 10);
+  const transfersPager = usePagination<any>(intercompanyTransfers || [], 10);
 
   const availableCoilsForCableIssue = useMemo(() => {
     return coils.filter(
@@ -549,163 +555,204 @@ export function InventoryAndIssuesModule({
         )}
 
         {/* Main Coil-wise Stock Table */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500 uppercase">
-                  <th className="py-2.5 pr-2">Internal Coil ID</th>
-                  <th className="py-2.5 px-2">Supplier Tag / Bobbin</th>
-                  <th className="py-2.5 px-2">Legal Owner</th>
-                  <th className="py-2.5 px-2">Plant & Location</th>
-                  <th className="py-2.5 px-2">Size & Stage</th>
-                  <th className="py-2.5 px-2 text-right">Available (kg)</th>
-                  <th className="py-2.5 px-2 text-right">Reserved</th>
-                  <th className="py-2.5 px-2 text-right">Orig Rate/kg</th>
-                  <th className="py-2.5 px-2 text-right">Stage Cost/kg</th>
-                  <th className="py-2.5 px-2">Status</th>
-                  <th className="py-2.5 pl-2 text-right">Ledger Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {filteredCoils.map((c: any) => (
-                  <tr key={c.id} className="hover:bg-slate-50">
-                    <td className="py-2.5 pr-2 font-mono font-bold">
-                      <button
-                        onClick={() => onNavigateTraceability(c.coil_code)}
-                        className="text-copper-700 hover:underline"
-                      >
-                        {c.coil_code}
-                      </button>
-                    </td>
-                    <td className="py-2.5 px-2 font-mono text-slate-600">
-                      {c.supplier_coil_number || c.bobbin_number || '-'}
-                    </td>
-                    <td className="py-2.5 px-2">
-                      <span className="font-semibold text-slate-900">{c.owner_company_name}</span>
-                    </td>
-                    <td className="py-2.5 px-2">
-                      <div className="text-slate-700">{c.location_name}</div>
-                      <div className="text-[10px] text-slate-500">{c.plant_name}</div>
-                    </td>
-                    <td className="py-2.5 px-2">
-                      <div className="font-mono font-bold text-sky-700">
-                        {Number(c.diameter_mm).toFixed(2)} mm
-                      </div>
-                      <div className="text-[10px] font-mono text-slate-500">
-                        {c.processing_stage}
-                      </div>
-                    </td>
-                    <td className="py-2.5 px-2 text-right font-mono font-bold text-emerald-700">
-                      {Number(c.available_weight_kg).toLocaleString('en-IN', {
-                        minimumFractionDigits: 2,
-                      })}
-                    </td>
-                    <td className="py-2.5 px-2 text-right font-mono text-amber-800">
-                      {Number(c.reserved_weight_kg).toFixed(1)}
-                    </td>
-                    <td className="py-2.5 px-2 text-right font-mono text-slate-600">
-                      ₹{Number(c.original_purchase_rate_per_kg).toFixed(2)}
-                    </td>
-                    <td className="py-2.5 px-2 text-right font-mono font-bold text-copper-700">
-                      ₹{Number(c.effective_cost_per_kg).toFixed(2)}
-                    </td>
-                    <td className="py-2.5 px-2">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                          c.status === 'AVAILABLE'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : c.status === 'PARTIALLY_CONSUMED'
-                            ? 'bg-amber-100 text-amber-800'
-                            : c.status === 'RESERVED'
-                            ? 'bg-purple-100 text-purple-700'
-                            : 'bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        {c.status}
-                      </span>
-                    </td>
-                    <td className="py-2.5 pl-2 text-right space-x-1">
-                      <button
-                        onClick={() => {
-                          setTransferCoil(c);
-                          setTargetLocId(c.current_location_id);
-                        }}
-                        className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-sky-700"
-                      >
-                        Move
-                      </button>
-                      <button
-                        onClick={() => {
-                          setReserveCoil(c);
-                          setReserveSubAction(
-                            Number(c.reserved_weight_kg) > 0 ? 'RELEASE' : 'RESERVE'
-                          );
-                        }}
-                        className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-amber-800"
-                      >
-                        Reserve
-                      </button>
-                    </td>
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="p-5 pb-3">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                Live Copper Coils & Bobbins Ledger ({filteredCoils.length})
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase">
+                    <th className="py-2.5 px-2.5">Internal Coil ID</th>
+                    <th className="py-2.5 px-2.5">Supplier Tag / Bobbin</th>
+                    <th className="py-2.5 px-2.5">Legal Owner</th>
+                    <th className="py-2.5 px-2.5">Plant & Location</th>
+                    <th className="py-2.5 px-2.5">Size & Stage</th>
+                    <th className="py-2.5 px-2.5 text-right">Available (kg)</th>
+                    <th className="py-2.5 px-2.5 text-right">Reserved</th>
+                    <th className="py-2.5 px-2.5 text-right">Orig Rate/kg</th>
+                    <th className="py-2.5 px-2.5 text-right">Stage Cost/kg</th>
+                    <th className="py-2.5 px-2.5">Status</th>
+                    <th className="py-2.5 px-2.5 text-right">Ledger Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {coilsPager.paginatedItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="py-8 text-center text-slate-400">
+                        No copper coils or bobbins match the selected filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    coilsPager.paginatedItems.map((c: any) => (
+                      <tr key={c.id} className="hover:bg-slate-50">
+                        <td className="py-2.5 px-2.5 font-mono font-bold whitespace-nowrap">
+                          <button
+                            onClick={() => onNavigateTraceability(c.coil_code)}
+                            className="text-copper-700 hover:underline"
+                          >
+                            {c.coil_code}
+                          </button>
+                        </td>
+                        <td className="py-2.5 px-2.5 font-mono text-slate-600 whitespace-nowrap">
+                          {c.supplier_coil_number || c.bobbin_number || '-'}
+                        </td>
+                        <td className="py-2.5 px-2.5 whitespace-nowrap">
+                          <span className="font-semibold text-slate-900">{c.owner_company_name}</span>
+                        </td>
+                        <td className="py-2.5 px-2.5">
+                          <div className="text-slate-700">{c.location_name}</div>
+                          <div className="text-[10px] text-slate-500">{c.plant_name}</div>
+                        </td>
+                        <td className="py-2.5 px-2.5 whitespace-nowrap">
+                          <div className="font-mono font-bold text-sky-700">
+                            {Number(c.diameter_mm).toFixed(2)} mm
+                          </div>
+                          <div className="text-[10px] font-mono text-slate-500">
+                            {c.processing_stage}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right font-mono font-bold text-emerald-700 whitespace-nowrap">
+                          {Number(c.available_weight_kg).toLocaleString('en-IN', {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right font-mono text-amber-800 whitespace-nowrap">
+                          {Number(c.reserved_weight_kg).toFixed(1)}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right font-mono text-slate-600 whitespace-nowrap">
+                          ₹{Number(c.original_purchase_rate_per_kg).toFixed(2)}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right font-mono font-bold text-copper-700 whitespace-nowrap">
+                          ₹{Number(c.effective_cost_per_kg).toFixed(2)}
+                        </td>
+                        <td className="py-2.5 px-2.5 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                              c.status === 'AVAILABLE'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : c.status === 'PARTIALLY_CONSUMED'
+                                ? 'bg-amber-100 text-amber-800'
+                                : c.status === 'RESERVED'
+                                ? 'bg-purple-100 text-purple-700'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right space-x-1 whitespace-nowrap">
+                          <button
+                            onClick={() => {
+                              setTransferCoil(c);
+                              setTargetLocId(c.current_location_id);
+                            }}
+                            className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-sky-700 font-medium"
+                          >
+                            Move
+                          </button>
+                          <button
+                            onClick={() => {
+                              setReserveCoil(c);
+                              setReserveSubAction(
+                                Number(c.reserved_weight_kg) > 0 ? 'RELEASE' : 'RESERVE'
+                              );
+                            }}
+                            className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-amber-800 font-medium"
+                          >
+                            Reserve
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+          <PaginationBar
+            currentPage={coilsPager.currentPage}
+            totalItems={coilsPager.totalItems}
+            pageSize={coilsPager.pageSize}
+            onPageChange={coilsPager.setCurrentPage}
+            onPageSizeChange={coilsPager.setPageSize}
+            itemLabel="coils"
+          />
         </div>
 
         {/* Scrap Lots Inventory */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
-            Audited Scrap & Recoverable Waste Lots ({scrapLots.length})
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500 uppercase">
-                  <th className="py-2 pr-3">Scrap Lot Code</th>
-                  <th className="py-2 px-3">Source Batch</th>
-                  <th className="py-2 px-3">Owner Company</th>
-                  <th className="py-2 px-3">Scrap Type</th>
-                  <th className="py-2 px-3 text-right">Weight (kg)</th>
-                  <th className="py-2 px-3 text-right">Source Cu Rate/kg</th>
-                  <th className="py-2 px-3 text-right">Recovery Valuation/kg</th>
-                  <th className="py-2 pl-3 text-right">Total Recovery Value</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {scrapLots.map((s: any) => (
-                  <tr key={s.id}>
-                    <td className="py-2 pr-3 font-mono font-bold text-amber-800">
-                      {s.scrap_code}
-                    </td>
-                    <td className="py-2 px-3 font-mono text-copper-700">
-                      <button
-                        onClick={() => onNavigateTraceability(s.batch_number)}
-                        className="hover:underline"
-                      >
-                        {s.batch_number}
-                      </button>
-                    </td>
-                    <td className="py-2 px-3 text-slate-700">{s.owner_company_name}</td>
-                    <td className="py-2 px-3 font-mono text-slate-600">{s.scrap_type}</td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
-                      {Number(s.weight_kg).toFixed(2)} kg
-                    </td>
-                    <td className="py-2 px-3 text-right font-mono text-slate-600">
-                      ₹{Number(s.source_copper_rate_per_kg).toFixed(2)}
-                    </td>
-                    <td className="py-2 px-3 text-right font-mono text-emerald-700">
-                      ₹{Number(s.recovery_valuation_per_kg).toFixed(2)}
-                    </td>
-                    <td className="py-2 pl-3 text-right font-mono font-bold text-emerald-700">
-                      ₹{Number(s.total_recovery_value).toLocaleString('en-IN')}
-                    </td>
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="p-5 pb-3">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
+              Audited Scrap & Recoverable Waste Lots ({scrapLots.length})
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase">
+                    <th className="py-2.5 px-3">Scrap Lot Code</th>
+                    <th className="py-2.5 px-3">Source Batch</th>
+                    <th className="py-2.5 px-3">Owner Company</th>
+                    <th className="py-2.5 px-3">Scrap Type</th>
+                    <th className="py-2.5 px-3 text-right">Weight (kg)</th>
+                    <th className="py-2.5 px-3 text-right">Source Cu Rate/kg</th>
+                    <th className="py-2.5 px-3 text-right">Recovery Valuation/kg</th>
+                    <th className="py-2.5 px-3 text-right">Total Recovery Value</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {scrapPager.paginatedItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-slate-400">
+                        No scrap or recoverable waste lots recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    scrapPager.paginatedItems.map((s: any) => (
+                      <tr key={s.id} className="hover:bg-slate-50">
+                        <td className="py-2.5 px-3 font-mono font-bold text-amber-800 whitespace-nowrap">
+                          {s.scrap_code}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-copper-700 whitespace-nowrap">
+                          <button
+                            onClick={() => onNavigateTraceability(s.batch_number)}
+                            className="hover:underline"
+                          >
+                            {s.batch_number}
+                          </button>
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-700 whitespace-nowrap">{s.owner_company_name}</td>
+                        <td className="py-2.5 px-3 font-mono text-slate-600 whitespace-nowrap">{s.scrap_type}</td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                          {Number(s.weight_kg).toFixed(2)} kg
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-600 whitespace-nowrap">
+                          ₹{Number(s.source_copper_rate_per_kg).toFixed(2)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700 whitespace-nowrap">
+                          ₹{Number(s.recovery_valuation_per_kg).toFixed(2)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700 whitespace-nowrap">
+                          ₹{Number(s.total_recovery_value).toLocaleString('en-IN')}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+          <PaginationBar
+            currentPage={scrapPager.currentPage}
+            totalItems={scrapPager.totalItems}
+            pageSize={scrapPager.pageSize}
+            onPageChange={scrapPager.setCurrentPage}
+            onPageSizeChange={scrapPager.setPageSize}
+            itemLabel="scrap lots"
+          />
         </div>
       </div>
     );
@@ -1030,126 +1077,162 @@ export function InventoryAndIssuesModule({
 
       {/* Cable Production Issues & Intercompany Transfers Registers */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
-            Cable Production Issues Register ({cableIssues.length})
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500 uppercase">
-                  <th className="py-2 pr-2">Issue / Cable Batch</th>
-                  <th className="py-2 px-2">Company & Category</th>
-                  <th className="py-2 px-2">Mode & Precision</th>
-                  <th className="py-2 px-2 text-right">Weight (kg)</th>
-                  <th className="py-2 pl-2 text-right">Copper Cost</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {cableIssues.map((ci: any) => (
-                  <tr key={ci.id}>
-                    <td className="py-2.5 pr-2 font-mono">
-                      <button
-                        onClick={() => onNavigateTraceability(ci.cable_batch_number)}
-                        className="font-bold text-copper-700 hover:underline"
-                      >
-                        {ci.cable_batch_number}
-                      </button>
-                      <div className="text-[10px] text-slate-500">{ci.issue_number}</div>
-                    </td>
-                    <td className="py-2.5 px-2">
-                      <div className="text-slate-900 font-semibold">{ci.owner_company_name}</div>
-                      <div className="text-[10px] text-slate-500">
-                        {ci.cable_category_name} ({Number(ci.conductor_mm).toFixed(2)} mm)
-                      </div>
-                    </td>
-                    <td className="py-2.5 px-2">
-                      <div className="font-mono text-sky-700 text-[11px]">{ci.issue_mode}</div>
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono ${
-                          ci.traceability_precision === 'EXACT_COIL_LINKED'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {ci.traceability_precision}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-2 text-right font-mono font-bold text-slate-900">
-                      {Number(ci.total_issued_weight_kg).toFixed(2)} kg
-                    </td>
-                    <td className="py-2.5 pl-2 text-right font-mono">
-                      <div className="font-bold text-emerald-700">
-                        ₹{Number(ci.total_attributed_copper_cost).toLocaleString('en-IN')}
-                      </div>
-                      <div className="text-[10px] text-slate-500">
-                        ₹{Number(ci.weighted_avg_copper_cost_per_kg).toFixed(2)}/kg
-                      </div>
-                    </td>
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between">
+          <div className="p-5 pb-3">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
+              Cable Production Issues Register ({cableIssues.length})
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase">
+                    <th className="py-2.5 px-2.5">Issue / Cable Batch</th>
+                    <th className="py-2.5 px-2.5">Company & Category</th>
+                    <th className="py-2.5 px-2.5">Mode & Precision</th>
+                    <th className="py-2.5 px-2.5 text-right">Weight (kg)</th>
+                    <th className="py-2.5 px-2.5 text-right">Copper Cost</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {cableIssuesPager.paginatedItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-400">
+                        No cable production issues recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    cableIssuesPager.paginatedItems.map((ci: any) => (
+                      <tr key={ci.id} className="hover:bg-slate-50">
+                        <td className="py-2.5 px-2.5 font-mono whitespace-nowrap">
+                          <button
+                            onClick={() => onNavigateTraceability(ci.cable_batch_number)}
+                            className="font-bold text-copper-700 hover:underline"
+                          >
+                            {ci.cable_batch_number}
+                          </button>
+                          <div className="text-[10px] text-slate-500">{ci.issue_number}</div>
+                        </td>
+                        <td className="py-2.5 px-2.5">
+                          <div className="text-slate-900 font-semibold">{ci.owner_company_name}</div>
+                          <div className="text-[10px] text-slate-500">
+                            {ci.cable_category_name} ({Number(ci.conductor_mm).toFixed(2)} mm)
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-2.5 whitespace-nowrap">
+                          <div className="font-mono text-sky-700 text-[11px]">{ci.issue_mode}</div>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono ${
+                              ci.traceability_precision === 'EXACT_COIL_LINKED'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {ci.traceability_precision}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                          {Number(ci.total_issued_weight_kg).toFixed(2)} kg
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right font-mono whitespace-nowrap">
+                          <div className="font-bold text-emerald-700">
+                            ₹{Number(ci.total_attributed_copper_cost).toLocaleString('en-IN')}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            ₹{Number(ci.weighted_avg_copper_cost_per_kg).toFixed(2)}/kg
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+          <PaginationBar
+            currentPage={cableIssuesPager.currentPage}
+            totalItems={cableIssuesPager.totalItems}
+            pageSize={cableIssuesPager.pageSize}
+            onPageChange={cableIssuesPager.setCurrentPage}
+            onPageSizeChange={cableIssuesPager.setPageSize}
+            itemLabel="issues"
+          />
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
-            Intercompany Legal Ownership Transfers ({intercompanyTransfers.length})
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500 uppercase">
-                  <th className="py-2 pr-2">Transfer No</th>
-                  <th className="py-2 px-2">Coil ID</th>
-                  <th className="py-2 px-2">From → To Company</th>
-                  <th className="py-2 px-2 text-right">Weight / Rate</th>
-                  <th className="py-2 pl-2">Reference & Auth</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {intercompanyTransfers.map((ic: any) => (
-                  <tr key={ic.id}>
-                    <td className="py-2.5 pr-2 font-mono font-bold text-purple-700">
-                      {ic.transfer_number}
-                      <div className="text-[10px] text-slate-500">
-                        {String(ic.transfer_date).slice(0, 10)}
-                      </div>
-                    </td>
-                    <td className="py-2.5 px-2 font-mono">
-                      <button
-                        onClick={() => onNavigateTraceability(ic.coil_code)}
-                        className="text-copper-700 hover:underline font-bold"
-                      >
-                        {ic.coil_code}
-                      </button>
-                      <div className="text-[10px] text-slate-500">
-                        {Number(ic.diameter_mm).toFixed(2)} mm
-                      </div>
-                    </td>
-                    <td className="py-2.5 px-2">
-                      <span className="text-rose-700">{ic.from_company_name}</span>
-                      <span className="mx-1 text-slate-500">→</span>
-                      <span className="text-emerald-700 font-semibold">{ic.to_company_name}</span>
-                    </td>
-                    <td className="py-2.5 px-2 text-right font-mono">
-                      <div className="text-slate-900 font-bold">
-                        {Number(ic.weight_transferred_kg).toFixed(1)} kg
-                      </div>
-                      <div className="text-[10px] text-slate-500">
-                        Orig: ₹{Number(ic.original_purchase_rate_per_kg).toFixed(2)}/kg
-                      </div>
-                    </td>
-                    <td className="py-2.5 pl-2">
-                      <div className="font-mono text-slate-700">{ic.transfer_reference_doc}</div>
-                      <div className="text-[10px] text-slate-500">By: {ic.authorized_by}</div>
-                    </td>
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between">
+          <div className="p-5 pb-3">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
+              Intercompany Legal Ownership Transfers ({intercompanyTransfers.length})
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase">
+                    <th className="py-2.5 px-2.5">Transfer No</th>
+                    <th className="py-2.5 px-2.5">Coil ID</th>
+                    <th className="py-2.5 px-2.5">From → To Company</th>
+                    <th className="py-2.5 px-2.5 text-right">Weight / Rate</th>
+                    <th className="py-2.5 px-2.5">Reference & Auth</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {transfersPager.paginatedItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-400">
+                        No intercompany legal ownership transfers recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    transfersPager.paginatedItems.map((ic: any) => (
+                      <tr key={ic.id} className="hover:bg-slate-50">
+                        <td className="py-2.5 px-2.5 font-mono font-bold text-purple-700 whitespace-nowrap">
+                          {ic.transfer_number}
+                          <div className="text-[10px] text-slate-500">
+                            {String(ic.transfer_date).slice(0, 10)}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-2.5 font-mono whitespace-nowrap">
+                          <button
+                            onClick={() => onNavigateTraceability(ic.coil_code)}
+                            className="text-copper-700 hover:underline font-bold"
+                          >
+                            {ic.coil_code}
+                          </button>
+                          <div className="text-[10px] text-slate-500">
+                            {Number(ic.diameter_mm).toFixed(2)} mm
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-2.5">
+                          <span className="text-rose-700">{ic.from_company_name}</span>
+                          <span className="mx-1 text-slate-500">→</span>
+                          <span className="text-emerald-700 font-semibold">{ic.to_company_name}</span>
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right font-mono whitespace-nowrap">
+                          <div className="text-slate-900 font-bold">
+                            {Number(ic.weight_transferred_kg).toFixed(1)} kg
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            Orig: ₹{Number(ic.original_purchase_rate_per_kg).toFixed(2)}/kg
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-2.5">
+                          <div className="font-mono text-slate-700">{ic.transfer_reference_doc}</div>
+                          <div className="text-[10px] text-slate-500">By: {ic.authorized_by}</div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+          <PaginationBar
+            currentPage={transfersPager.currentPage}
+            totalItems={transfersPager.totalItems}
+            pageSize={transfersPager.pageSize}
+            onPageChange={transfersPager.setCurrentPage}
+            onPageSizeChange={transfersPager.setPageSize}
+            itemLabel="transfers"
+          />
         </div>
       </div>
     </div>

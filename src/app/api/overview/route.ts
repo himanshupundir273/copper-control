@@ -35,22 +35,25 @@ export async function GET(_req: NextRequest) {
       scrapLots,
     ] = await Promise.all([
       getDashboardData(includeDemo),
-      query('SELECT * FROM companies ORDER BY id'),
+      query('SELECT * FROM companies WHERE is_active = TRUE ORDER BY id'),
       query(
         `SELECT p.*, c.name AS operated_by_company_name
-         FROM plants p JOIN companies c ON c.id = p.operated_by_company_id ORDER BY p.id`
+         FROM plants p JOIN companies c ON c.id = p.operated_by_company_id
+         WHERE p.is_active = TRUE ORDER BY p.id`
       ),
       query(
         `SELECT l.*, p.name AS plant_name, p.code AS plant_code
-         FROM storage_locations l JOIN plants p ON p.id = l.plant_id ORDER BY l.id`
+         FROM storage_locations l JOIN plants p ON p.id = l.plant_id
+         WHERE l.is_active = TRUE ORDER BY l.id`
       ),
-      query('SELECT * FROM copper_diameters ORDER BY diameter_mm DESC'),
-      query('SELECT * FROM process_types ORDER BY sequence_hint ASC, id ASC'),
+      query('SELECT * FROM copper_diameters WHERE is_active = TRUE ORDER BY diameter_mm DESC'),
+      query('SELECT * FROM process_types WHERE is_active = TRUE ORDER BY sequence_hint ASC, id ASC'),
       query(
         `SELECT m.*, p.name AS plant_name, pt.code AS process_code, pt.name AS process_name
          FROM machines m
          JOIN plants p ON p.id = m.plant_id
          JOIN process_types pt ON pt.id = m.process_type_id
+         WHERE m.is_active = TRUE
          ORDER BY m.id`
       ),
       query(
@@ -60,15 +63,17 @@ export async function GET(_req: NextRequest) {
          JOIN process_types pt ON pt.id = r.process_type_id
          JOIN copper_diameters din ON din.id = r.input_diameter_id
          JOIN copper_diameters dout ON dout.id = r.output_diameter_id
+         WHERE r.is_active = TRUE
          ORDER BY pt.sequence_hint ASC, din.diameter_mm DESC, dout.diameter_mm DESC`
       ),
-      query('SELECT * FROM bobbin_types ORDER BY id'),
-      query('SELECT * FROM material_categories ORDER BY id'),
+      query('SELECT * FROM bobbin_types WHERE is_active = TRUE ORDER BY id'),
+      query('SELECT * FROM material_categories WHERE is_active = TRUE ORDER BY id'),
       query(
         `SELECT cc.*, c.name AS primary_company_name
-         FROM cable_categories cc LEFT JOIN companies c ON c.id = cc.primary_company_id ORDER BY cc.id`
+         FROM cable_categories cc LEFT JOIN companies c ON c.id = cc.primary_company_id
+         WHERE cc.is_active = TRUE ORDER BY cc.id`
       ),
-      query('SELECT * FROM suppliers ORDER BY id'),
+      query('SELECT * FROM suppliers WHERE is_active = TRUE ORDER BY id'),
       query(
         `SELECT c.*,
                 comp.name AS owner_company_name, comp.code AS owner_company_code,
@@ -192,4 +197,3 @@ export async function GET(_req: NextRequest) {
     );
   }
 }
-

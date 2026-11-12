@@ -38,12 +38,63 @@ const NAV_ITEMS = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
+const VALID_TAB_IDS = new Set(NAV_ITEMS.map((item) => item.id));
+
 export default function CopperControlTowerApp() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [traceContext, setTraceContext] = useState<string>('');
+  const [tabHydrated, setTabHydrated] = useState<boolean>(false);
   const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Restore activeTab and traceContext from URL or localStorage on mount
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlTab = params.get('tab');
+      const urlTrace = params.get('q');
+      const storedTab = window.localStorage.getItem('cct_active_tab');
+      const storedTrace = window.localStorage.getItem('cct_trace_context');
+
+      const resolvedTab =
+        urlTab && VALID_TAB_IDS.has(urlTab)
+          ? urlTab
+          : storedTab && VALID_TAB_IDS.has(storedTab)
+          ? storedTab
+          : 'dashboard';
+
+      setActiveTab(resolvedTab);
+      if (urlTrace !== null) {
+        setTraceContext(urlTrace);
+      } else if (storedTrace) {
+        setTraceContext(storedTrace);
+      }
+    } catch {
+      // Ignore storage errors
+    } finally {
+      setTabHydrated(true);
+    }
+  }, []);
+
+  // Sync activeTab & traceContext to localStorage and URL query string
+  useEffect(() => {
+    if (!tabHydrated) return;
+    try {
+      window.localStorage.setItem('cct_active_tab', activeTab);
+      window.localStorage.setItem('cct_trace_context', traceContext);
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', activeTab);
+      if (traceContext && activeTab === 'traceability') {
+        url.searchParams.set('q', traceContext);
+      } else {
+        url.searchParams.delete('q');
+      }
+      window.history.replaceState({}, '', url.toString());
+    } catch {
+      // Ignore history/storage errors
+    }
+  }, [activeTab, traceContext, tabHydrated]);
 
   const fetchOverview = useCallback(async () => {
     setLoading(true);
@@ -67,17 +118,17 @@ export default function CopperControlTowerApp() {
   }, [fetchOverview]);
 
   const handleNavigate = (tab: string, contextCoilOrBatch?: string) => {
-    if (contextCoilOrBatch) {
+    if (contextCoilOrBatch !== undefined) {
       setTraceContext(contextCoilOrBatch);
     }
     setActiveTab(tab);
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50 text-slate-900">
-      {/* Industrial Left Navigation Sidebar (Light Mode) */}
-      <aside className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col shrink-0 shadow-sm">
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col lg:flex-row bg-slate-50 text-slate-900">
+      {/* Industrial Left Navigation Sidebar (Fixed / Non-Scrolling on Desktop, Sticky on Mobile) */}
+      <aside className="w-full lg:w-64 lg:h-screen sticky top-0 z-30 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col shrink-0 shadow-sm">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-copper-500 to-copper-700 flex items-center justify-center shadow-sm font-mono font-black text-white text-sm">
               Cu
@@ -94,7 +145,7 @@ export default function CopperControlTowerApp() {
         </div>
 
         {/* Multi-Company Indicator Pill */}
-        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-[11px] text-slate-600">
+        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-[11px] text-slate-600 shrink-0">
           <div className="font-semibold text-slate-700 mb-1">Active Legal Entities:</div>
           <div className="flex flex-wrap gap-1">
             <span className="px-1.5 py-0.5 rounded bg-copper-50 border border-copper-200 text-copper-800 font-mono text-[10px] font-semibold">
@@ -110,7 +161,7 @@ export default function CopperControlTowerApp() {
         </div>
 
         {/* Navigation Links */}
-        <nav className="p-2.5 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible flex-1">
+        <nav className="p-2.5 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto flex-1">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -118,7 +169,7 @@ export default function CopperControlTowerApp() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0 ${
                   isActive
                     ? 'bg-copper-600 text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -132,7 +183,7 @@ export default function CopperControlTowerApp() {
         </nav>
 
         {/* Bottom System Status Footer */}
-        <div className="hidden lg:block p-4 border-t border-slate-200 text-[11px] text-slate-500 space-y-1.5 bg-slate-50/60">
+        <div className="hidden lg:block p-4 border-t border-slate-200 text-[11px] text-slate-500 space-y-1.5 bg-slate-50/60 shrink-0">
           <div className="flex items-center gap-2 text-emerald-700 font-mono font-semibold">
             <Activity className="w-3.5 h-3.5" />
             <span>PostgreSQL Ledger Active</span>
@@ -141,10 +192,10 @@ export default function CopperControlTowerApp() {
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Content Area (Independently Scrollable) */}
+      <div className="flex-1 flex flex-col min-w-0 lg:h-screen lg:overflow-y-auto">
         {/* Top Industrial Telemetry Bar */}
-        <header className="bg-white/95 border-b border-slate-200 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-20 backdrop-blur shadow-sm">
+        <header className="bg-white/95 border-b border-slate-200 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-20 backdrop-blur shadow-sm shrink-0">
           <div>
             <h1 className="text-base font-bold text-slate-900 flex items-center gap-2">
               {NAV_ITEMS.find((n) => n.id === activeTab)?.label || 'Copper Control Tower'}
@@ -171,7 +222,7 @@ export default function CopperControlTowerApp() {
         </header>
 
         {/* Page Body */}
-        <main className="p-6 flex-1 overflow-y-auto">
+        <main className="p-6 flex-1">
           {error && (
             <div className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-xs text-rose-800 flex items-center gap-2 mb-6">
               <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />

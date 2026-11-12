@@ -7,9 +7,9 @@ import {
   Download,
   FileSpreadsheet,
   Sliders,
-  Trash2,
   Wrench,
 } from 'lucide-react';
+import { PaginationBar, usePagination } from './PaginationBar';
 
 interface ReportsMastersSettingsProps {
   mode: 'REPORTS' | 'MASTERS' | 'SETTINGS';
@@ -47,6 +47,11 @@ export function ReportsMastersSettingsModule({
   const [batchSearch, setBatchSearch] = useState('');
   const [reportRows, setReportRows] = useState<any[]>([]);
   const [loadingReport, setLoadingReport] = useState(false);
+
+  const reportsPager = usePagination<any>(reportRows, 15);
+  const diametersPager = usePagination<any>(masters.diameters || [], 8);
+  const routesPager = usePagination<any>(masters.routes || [], 8);
+  const bobbinsPager = usePagination<any>(masters.bobbins || [], 8);
 
   // Masters Form States
   const [newDiaMm, setNewDiaMm] = useState('');
@@ -158,182 +163,193 @@ export function ReportsMastersSettingsModule({
 
     return (
       <div className="space-y-6">
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-copper-100/80 border border-copper-300 text-copper-600">
-                <FileSpreadsheet className="w-5 h-5" />
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="p-6 pb-3 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-copper-100/80 border border-copper-300 text-copper-600">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    Module 9: Operational Registers & Management Reports (10 Registers)
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Filter by company, machine, copper diameter, date range, or batch number and export to CSV/Excel.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-900">
-                  Module 9: Operational Registers & Management Reports (10 Registers)
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Filter by company, machine, copper diameter, date range, or batch number and export to CSV/Excel.
-                </p>
-              </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={exportCsv}
-              disabled={reportRows.length === 0}
-              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-2 self-start"
-            >
-              <Download className="w-4 h-4" /> Export CSV / Excel ({reportRows.length} Rows)
-            </button>
-          </div>
-
-          {/* 10 Report Selector Tabs */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-            {REPORT_DEFINITIONS.map((r) => (
               <button
-                key={r.key}
                 type="button"
-                onClick={() => setReportKey(r.key)}
-                className={`text-left px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
-                  reportKey === r.key
-                    ? 'bg-copper-100/90 border-copper-400 text-slate-900'
-                    : 'bg-white border-slate-200 text-slate-500 hover:text-slate-700'
-                }`}
+                onClick={exportCsv}
+                disabled={reportRows.length === 0}
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-2 self-start"
               >
-                {r.label}
+                <Download className="w-4 h-4" /> Export CSV / Excel ({reportRows.length} Rows)
               </button>
-            ))}
-          </div>
-
-          {/* Filter Controls */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 pt-2">
-            <div>
-              <label className="block text-[10px] uppercase text-slate-500 mb-1">
-                Company Filter
-              </label>
-              <select
-                value={companyId}
-                onChange={(e) => setCompanyId(e.target.value)}
-                className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900"
-              >
-                <option value="">All Companies</option>
-                {masters.companies.map((c: any) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
             </div>
 
-            <div>
-              <label className="block text-[10px] uppercase text-slate-500 mb-1">
-                Machine Filter
-              </label>
-              <select
-                value={machineId}
-                onChange={(e) => setMachineId(e.target.value)}
-                className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900"
-              >
-                <option value="">All Machines</option>
-                {masters.machines.map((m: any) => (
-                  <option key={m.id} value={m.id}>
-                    {m.code} — {m.name}
-                  </option>
-                ))}
-              </select>
+            {/* 10 Report Selector Tabs */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              {REPORT_DEFINITIONS.map((r) => (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={() => setReportKey(r.key)}
+                  className={`text-left px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
+                    reportKey === r.key
+                      ? 'bg-copper-100/90 border-copper-400 text-slate-900'
+                      : 'bg-white border-slate-200 text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
             </div>
 
-            <div>
-              <label className="block text-[10px] uppercase text-slate-500 mb-1">
-                Diameter Filter
-              </label>
-              <select
-                value={diameterId}
-                onChange={(e) => setDiameterId(e.target.value)}
-                className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900"
-              >
-                <option value="">All Diameters</option>
-                {masters.diameters.map((d: any) => (
-                  <option key={d.id} value={d.id}>
-                    {Number(d.diameter_mm).toFixed(2)} mm
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase text-slate-500 mb-1">
-                From Date
-              </label>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs font-mono text-slate-900"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase text-slate-500 mb-1">
-                To Date
-              </label>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs font-mono text-slate-900"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase text-slate-500 mb-1">
-                Batch / Coil Search
-              </label>
-              <input
-                type="text"
-                placeholder="Search ID..."
-                value={batchSearch}
-                onChange={(e) => setBatchSearch(e.target.value)}
-                className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs font-mono text-slate-900"
-              />
-            </div>
-          </div>
-
-          {/* Report Data Table */}
-          <div className="overflow-x-auto pt-2">
-            {loadingReport ? (
-              <div className="py-12 text-center text-xs text-slate-500">
-                Loading register data...
+            {/* Filter Controls */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 pt-2">
+              <div>
+                <label className="block text-[10px] uppercase text-slate-500 mb-1">
+                  Company Filter
+                </label>
+                <select
+                  value={companyId}
+                  onChange={(e) => setCompanyId(e.target.value)}
+                  className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900"
+                >
+                  <option value="">All Companies</option>
+                  {masters.companies.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ) : reportRows.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-500">
-                No matching rows found for the selected filter criteria.
+
+              <div>
+                <label className="block text-[10px] uppercase text-slate-500 mb-1">
+                  Machine Filter
+                </label>
+                <select
+                  value={machineId}
+                  onChange={(e) => setMachineId(e.target.value)}
+                  className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900"
+                >
+                  <option value="">All Machines</option>
+                  {masters.machines.map((m: any) => (
+                    <option key={m.id} value={m.id}>
+                      {m.code} — {m.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ) : (
-              <table className="w-full text-xs text-left">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-500 uppercase">
-                    {columns.map((col) => (
-                      <th key={col} className="py-2.5 px-2.5 whitespace-nowrap">
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {reportRows.map((row, rIdx) => (
-                    <tr key={rIdx} className="hover:bg-slate-50">
+
+              <div>
+                <label className="block text-[10px] uppercase text-slate-500 mb-1">
+                  Diameter Filter
+                </label>
+                <select
+                  value={diameterId}
+                  onChange={(e) => setDiameterId(e.target.value)}
+                  className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900"
+                >
+                  <option value="">All Diameters</option>
+                  {masters.diameters.map((d: any) => (
+                    <option key={d.id} value={d.id}>
+                      {Number(d.diameter_mm).toFixed(2)} mm
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-slate-500 mb-1">
+                  From Date
+                </label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs font-mono text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-slate-500 mb-1">
+                  To Date
+                </label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs font-mono text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase text-slate-500 mb-1">
+                  Batch / Coil Search
+                </label>
+                <input
+                  type="text"
+                  placeholder="Search ID..."
+                  value={batchSearch}
+                  onChange={(e) => setBatchSearch(e.target.value)}
+                  className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs font-mono text-slate-900"
+                />
+              </div>
+            </div>
+
+            {/* Report Data Table */}
+            <div className="overflow-x-auto pt-2">
+              {loadingReport ? (
+                <div className="py-12 text-center text-xs text-slate-500">
+                  Loading register data...
+                </div>
+              ) : reportRows.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-400">
+                  No matching rows found for the selected filter criteria.
+                </div>
+              ) : (
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase">
                       {columns.map((col) => (
-                        <td
-                          key={col}
-                          className="py-2.5 px-2.5 font-mono text-slate-700 whitespace-nowrap"
-                        >
-                          {row[col]}
-                        </td>
+                        <th key={col} className="py-2.5 px-2.5 whitespace-nowrap">
+                          {col}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {reportsPager.paginatedItems.map((row, rIdx) => (
+                      <tr key={rIdx} className="hover:bg-slate-50">
+                        {columns.map((col) => (
+                          <td
+                            key={col}
+                            className="py-2.5 px-2.5 font-mono text-slate-700 whitespace-nowrap"
+                          >
+                            {row[col]}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
+          <PaginationBar
+            currentPage={reportsPager.currentPage}
+            totalItems={reportsPager.totalItems}
+            pageSize={reportsPager.pageSize}
+            onPageChange={reportsPager.setCurrentPage}
+            onPageSizeChange={reportsPager.setPageSize}
+            pageSizeOptions={[10, 15, 25, 50, 100]}
+            itemLabel="rows"
+          />
         </div>
       </div>
     );
@@ -350,382 +366,411 @@ export function ReportsMastersSettingsModule({
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* 1. Copper Diameters Master */}
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <Wrench className="w-4 h-4 text-copper-600" />
-                  Copper Diameters Master ({masters.diameters.length})
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Spoken sizes from meeting (1.8, 1.6, 1.4, 1.0, 0.9, 0.6 mm & CAT6 sizes) with explicit plant verification status.
-                </p>
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between">
+            <div className="p-5 pb-3 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <Wrench className="w-4 h-4 text-copper-600" />
+                    Copper Diameters Master ({masters.diameters.length})
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Spoken sizes from meeting (1.8, 1.6, 1.4, 1.0, 0.9, 0.6 mm & CAT6 sizes) with explicit plant verification status.
+                  </p>
+                </div>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  postMasterAction(
+                    {
+                      action: 'ADD_DIAMETER',
+                      diameterMm: newDiaMm,
+                      label: newDiaLabel,
+                      swgAwgRef: newDiaRef,
+                      category: newDiaCat,
+                      verificationStatus: newDiaVerify,
+                    },
+                    `Added copper diameter ${newDiaMm} mm.`
+                  );
+                  setNewDiaMm('');
+                  setNewDiaLabel('');
+                }}
+                className="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200"
+              >
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  placeholder="Ø mm (e.g. 1.20)"
+                  value={newDiaMm}
+                  onChange={(e) => setNewDiaMm(e.target.value)}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
+                />
+                <input
+                  type="text"
+                  required
+                  placeholder="Label"
+                  value={newDiaLabel}
+                  onChange={(e) => setNewDiaLabel(e.target.value)}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs text-slate-900"
+                />
+                <input
+                  type="text"
+                  placeholder="SWG / AWG Ref"
+                  value={newDiaRef}
+                  onChange={(e) => setNewDiaRef(e.target.value)}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs text-slate-900"
+                />
+                <select
+                  value={newDiaVerify}
+                  onChange={(e) => setNewDiaVerify(e.target.value)}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs text-slate-900"
+                >
+                  <option value="PENDING_CONFIRMATION">PENDING VERIFY</option>
+                  <option value="VERIFIED">VERIFIED</option>
+                </select>
+                <button
+                  type="submit"
+                  className="rounded bg-copper-600 hover:bg-copper-500 text-white text-xs font-bold px-3 py-1.5"
+                >
+                  + Add Size
+                </button>
+              </form>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase">
+                      <th className="py-2 px-2">Ø (mm)</th>
+                      <th className="py-2 px-2">Label & Gauge</th>
+                      <th className="py-2 px-2">Verification Status</th>
+                      <th className="py-2 px-2 text-right">Toggle</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {diametersPager.paginatedItems.map((d: any) => (
+                      <tr key={d.id} className="hover:bg-slate-50">
+                        <td className="py-2 px-2 font-mono font-bold text-slate-900 whitespace-nowrap">
+                          {Number(d.diameter_mm).toFixed(2)} mm
+                        </td>
+                        <td className="py-2 px-2">
+                          <div className="text-slate-700">{d.label}</div>
+                          <div className="text-[10px] text-slate-500">
+                            {d.swg_awg_ref} • {d.notes}
+                          </div>
+                        </td>
+                        <td className="py-2 px-2 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                              d.verification_status === 'VERIFIED'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {d.verification_status}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-right whitespace-nowrap">
+                          <button
+                            onClick={() =>
+                              postMasterAction(
+                                {
+                                  action: 'TOGGLE_DIAMETER_VERIFICATION',
+                                  id: d.id,
+                                  verificationStatus:
+                                    d.verification_status === 'VERIFIED'
+                                      ? 'PENDING_CONFIRMATION'
+                                      : 'VERIFIED',
+                                },
+                                `Updated verification status for ${d.diameter_mm} mm.`
+                              )
+                            }
+                            className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-600"
+                          >
+                            Flip Status
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                postMasterAction(
-                  {
-                    action: 'ADD_DIAMETER',
-                    diameterMm: newDiaMm,
-                    label: newDiaLabel,
-                    swgAwgRef: newDiaRef,
-                    category: newDiaCat,
-                    verificationStatus: newDiaVerify,
-                  },
-                  `Added copper diameter ${newDiaMm} mm.`
-                );
-                setNewDiaMm('');
-                setNewDiaLabel('');
-              }}
-              className="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-white p-3 rounded-lg border border-slate-200"
-            >
-              <input
-                type="number"
-                step="0.01"
-                required
-                placeholder="Ø mm (e.g. 1.20)"
-                value={newDiaMm}
-                onChange={(e) => setNewDiaMm(e.target.value)}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
-              />
-              <input
-                type="text"
-                required
-                placeholder="Label"
-                value={newDiaLabel}
-                onChange={(e) => setNewDiaLabel(e.target.value)}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs text-slate-900"
-              />
-              <input
-                type="text"
-                placeholder="SWG / AWG Ref"
-                value={newDiaRef}
-                onChange={(e) => setNewDiaRef(e.target.value)}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs text-slate-900"
-              />
-              <select
-                value={newDiaVerify}
-                onChange={(e) => setNewDiaVerify(e.target.value)}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs text-slate-900"
-              >
-                <option value="PENDING_CONFIRMATION">PENDING VERIFY</option>
-                <option value="VERIFIED">VERIFIED</option>
-              </select>
-              <button
-                type="submit"
-                className="rounded bg-copper-600 hover:bg-copper-500 text-white text-xs font-bold px-3 py-1.5"
-              >
-                + Add Size
-              </button>
-            </form>
-
-            <div className="overflow-x-auto max-h-80">
-              <table className="w-full text-xs text-left">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-500 uppercase">
-                    <th className="py-2 pr-2">Ø (mm)</th>
-                    <th className="py-2 px-2">Label & Gauge</th>
-                    <th className="py-2 px-2">Verification Status</th>
-                    <th className="py-2 pl-2 text-right">Toggle</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {masters.diameters.map((d: any) => (
-                    <tr key={d.id}>
-                      <td className="py-2 pr-2 font-mono font-bold text-slate-900">
-                        {Number(d.diameter_mm).toFixed(2)} mm
-                      </td>
-                      <td className="py-2 px-2">
-                        <div className="text-slate-700">{d.label}</div>
-                        <div className="text-[10px] text-slate-500">
-                          {d.swg_awg_ref} • {d.notes}
-                        </div>
-                      </td>
-                      <td className="py-2 px-2">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                            d.verification_status === 'VERIFIED'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {d.verification_status}
-                        </span>
-                      </td>
-                      <td className="py-2 pl-2 text-right">
-                        <button
-                          onClick={() =>
-                            postMasterAction(
-                              {
-                                action: 'TOGGLE_DIAMETER_VERIFICATION',
-                                id: d.id,
-                                verificationStatus:
-                                  d.verification_status === 'VERIFIED'
-                                    ? 'PENDING_CONFIRMATION'
-                                    : 'VERIFIED',
-                              },
-                              `Updated verification status for ${d.diameter_mm} mm.`
-                            )
-                          }
-                          className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-600"
-                        >
-                          Flip Status
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <PaginationBar
+              currentPage={diametersPager.currentPage}
+              totalItems={diametersPager.totalItems}
+              pageSize={diametersPager.pageSize}
+              onPageChange={diametersPager.setCurrentPage}
+              itemLabel="sizes"
+            />
           </div>
 
           {/* 2. Allowed Input/Output Process Routes & Standard Wastage Master */}
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                Allowed Process Routes & Standard Wastage % ({masters.routes.length})
-              </h3>
-              <p className="text-[11px] text-slate-500">
-                Configurable manufacturing routes. Unconfirmed spoken combinations are marked PENDING_CONFIRMATION.
-              </p>
-            </div>
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between">
+            <div className="p-5 pb-3 space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                  Allowed Process Routes & Standard Wastage % ({masters.routes.length})
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Configurable manufacturing routes. Unconfirmed spoken combinations are marked PENDING_CONFIRMATION.
+                </p>
+              </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                postMasterAction(
-                  {
-                    action: 'ADD_ROUTE',
-                    processTypeId: newRouteProcId,
-                    inputDiameterId: newRouteInDiaId,
-                    outputDiameterId: newRouteOutDiaId,
-                    standardWastagePct: newRouteWastage,
-                    standardProcessingCostPerKg: newRouteCost,
-                    verificationStatus: 'PENDING_CONFIRMATION',
-                  },
-                  'Added new allowed process route combination.'
-                );
-              }}
-              className="grid grid-cols-2 sm:grid-cols-6 gap-2 bg-white p-3 rounded-lg border border-slate-200"
-            >
-              <select
-                value={newRouteProcId}
-                onChange={(e) => setNewRouteProcId(Number(e.target.value))}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs text-slate-900"
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  postMasterAction(
+                    {
+                      action: 'ADD_ROUTE',
+                      processTypeId: newRouteProcId,
+                      inputDiameterId: newRouteInDiaId,
+                      outputDiameterId: newRouteOutDiaId,
+                      standardWastagePct: newRouteWastage,
+                      standardProcessingCostPerKg: newRouteCost,
+                      verificationStatus: 'PENDING_CONFIRMATION',
+                    },
+                    'Added new allowed process route combination.'
+                  );
+                }}
+                className="grid grid-cols-2 sm:grid-cols-6 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200"
               >
-                {masters.processTypes.map((p: any) => (
-                  <option key={p.id} value={p.id}>
-                    {p.code}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={newRouteInDiaId}
-                onChange={(e) => setNewRouteInDiaId(Number(e.target.value))}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
-              >
-                {masters.diameters.map((d: any) => (
-                  <option key={d.id} value={d.id}>
-                    In: {Number(d.diameter_mm).toFixed(2)}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={newRouteOutDiaId}
-                onChange={(e) => setNewRouteOutDiaId(Number(e.target.value))}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
-              >
-                {masters.diameters.map((d: any) => (
-                  <option key={d.id} value={d.id}>
-                    Out: {Number(d.diameter_mm).toFixed(2)}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                step="0.05"
-                placeholder="Wastage %"
-                value={newRouteWastage}
-                onChange={(e) => setNewRouteWastage(e.target.value)}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
-              />
-              <input
-                type="number"
-                step="0.5"
-                placeholder="Cost/kg"
-                value={newRouteCost}
-                onChange={(e) => setNewRouteCost(e.target.value)}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
-              />
-              <button
-                type="submit"
-                className="rounded bg-copper-600 hover:bg-copper-500 text-white text-xs font-bold px-2 py-1.5"
-              >
-                + Add Route
-              </button>
-            </form>
-
-            <div className="overflow-x-auto max-h-80">
-              <table className="w-full text-xs text-left">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-500 uppercase">
-                    <th className="py-2 pr-2">Process</th>
-                    <th className="py-2 px-2">Input → Output</th>
-                    <th className="py-2 px-2 text-right">Std Wastage %</th>
-                    <th className="py-2 px-2 text-right">Std Cost/kg</th>
-                    <th className="py-2 px-2">Status</th>
-                    <th className="py-2 pl-2 text-right">Toggle</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {masters.routes.map((r: any) => (
-                    <tr key={r.id}>
-                      <td className="py-2 pr-2 font-mono font-bold text-sky-700">
-                        {r.process_code}
-                      </td>
-                      <td className="py-2 px-2 font-mono text-slate-900">
-                        {Number(r.input_mm).toFixed(2)} → {Number(r.output_mm).toFixed(2)} mm
-                      </td>
-                      <td className="py-2 px-2 text-right font-mono text-amber-800">
-                        {Number(r.standard_wastage_pct).toFixed(2)}%
-                      </td>
-                      <td className="py-2 px-2 text-right font-mono text-slate-700">
-                        ₹{Number(r.standard_processing_cost_per_kg).toFixed(2)}
-                      </td>
-                      <td className="py-2 px-2">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                            r.verification_status === 'VERIFIED'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {r.verification_status}
-                        </span>
-                      </td>
-                      <td className="py-2 pl-2 text-right">
-                        <button
-                          onClick={() =>
-                            postMasterAction(
-                              {
-                                action: 'TOGGLE_ROUTE_VERIFICATION',
-                                id: r.id,
-                                verificationStatus:
-                                  r.verification_status === 'VERIFIED'
-                                    ? 'PENDING_CONFIRMATION'
-                                    : 'VERIFIED',
-                              },
-                              'Updated route verification status.'
-                            )
-                          }
-                          className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-600"
-                        >
-                          Flip
-                        </button>
-                      </td>
-                    </tr>
+                <select
+                  value={newRouteProcId}
+                  onChange={(e) => setNewRouteProcId(Number(e.target.value))}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs text-slate-900"
+                >
+                  {masters.processTypes.map((p: any) => (
+                    <option key={p.id} value={p.id}>
+                      {p.code}
+                    </option>
                   ))}
-                </tbody>
-              </table>
+                </select>
+                <select
+                  value={newRouteInDiaId}
+                  onChange={(e) => setNewRouteInDiaId(Number(e.target.value))}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
+                >
+                  {masters.diameters.map((d: any) => (
+                    <option key={d.id} value={d.id}>
+                      In: {Number(d.diameter_mm).toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={newRouteOutDiaId}
+                  onChange={(e) => setNewRouteOutDiaId(Number(e.target.value))}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
+                >
+                  {masters.diameters.map((d: any) => (
+                    <option key={d.id} value={d.id}>
+                      Out: {Number(d.diameter_mm).toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  step="0.05"
+                  placeholder="Wastage %"
+                  value={newRouteWastage}
+                  onChange={(e) => setNewRouteWastage(e.target.value)}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
+                />
+                <input
+                  type="number"
+                  step="0.5"
+                  placeholder="Cost/kg"
+                  value={newRouteCost}
+                  onChange={(e) => setNewRouteCost(e.target.value)}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
+                />
+                <button
+                  type="submit"
+                  className="rounded bg-copper-600 hover:bg-copper-500 text-white text-xs font-bold px-2 py-1.5"
+                >
+                  + Add Route
+                </button>
+              </form>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase">
+                      <th className="py-2 px-2">Process</th>
+                      <th className="py-2 px-2">Input → Output</th>
+                      <th className="py-2 px-2 text-right">Std Wastage %</th>
+                      <th className="py-2 px-2 text-right">Std Cost/kg</th>
+                      <th className="py-2 px-2">Status</th>
+                      <th className="py-2 px-2 text-right">Toggle</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {routesPager.paginatedItems.map((r: any) => (
+                      <tr key={r.id} className="hover:bg-slate-50">
+                        <td className="py-2 px-2 font-mono font-bold text-sky-700 whitespace-nowrap">
+                          {r.process_code}
+                        </td>
+                        <td className="py-2 px-2 font-mono text-slate-900 whitespace-nowrap">
+                          {Number(r.input_mm).toFixed(2)} → {Number(r.output_mm).toFixed(2)} mm
+                        </td>
+                        <td className="py-2 px-2 text-right font-mono text-amber-800 whitespace-nowrap">
+                          {Number(r.standard_wastage_pct).toFixed(2)}%
+                        </td>
+                        <td className="py-2 px-2 text-right font-mono text-slate-700 whitespace-nowrap">
+                          ₹{Number(r.standard_processing_cost_per_kg).toFixed(2)}
+                        </td>
+                        <td className="py-2 px-2 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                              r.verification_status === 'VERIFIED'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {r.verification_status}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-right whitespace-nowrap">
+                          <button
+                            onClick={() =>
+                              postMasterAction(
+                                {
+                                  action: 'TOGGLE_ROUTE_VERIFICATION',
+                                  id: r.id,
+                                  verificationStatus:
+                                    r.verification_status === 'VERIFIED'
+                                      ? 'PENDING_CONFIRMATION'
+                                      : 'VERIFIED',
+                                },
+                                'Updated route verification status.'
+                              )
+                            }
+                            className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-600"
+                          >
+                            Flip
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
+            <PaginationBar
+              currentPage={routesPager.currentPage}
+              totalItems={routesPager.totalItems}
+              pageSize={routesPager.pageSize}
+              onPageChange={routesPager.setCurrentPage}
+              itemLabel="routes"
+            />
           </div>
 
           {/* 3. Bobbin Types & Tare Weights Master */}
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-              Bobbin Types & Standard Tare Weights ({masters.bobbins.length})
-            </h3>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                postMasterAction(
-                  {
-                    action: 'ADD_BOBBIN',
-                    code: newBobCode,
-                    name: newBobName,
-                    standardTareWeightKg: newBobTare,
-                    maxNetCapacityKg: newBobCap,
-                  },
-                  `Added bobbin type ${newBobCode}.`
-                );
-                setNewBobCode('');
-                setNewBobName('');
-              }}
-              className="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-white p-3 rounded-lg border border-slate-200"
-            >
-              <input
-                type="text"
-                required
-                placeholder="Code (e.g. DIN-800)"
-                value={newBobCode}
-                onChange={(e) => setNewBobCode(e.target.value)}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
-              />
-              <input
-                type="text"
-                required
-                placeholder="Bobbin Description"
-                value={newBobName}
-                onChange={(e) => setNewBobName(e.target.value)}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs text-slate-900"
-              />
-              <input
-                type="number"
-                step="0.1"
-                required
-                placeholder="Tare kg"
-                value={newBobTare}
-                onChange={(e) => setNewBobTare(e.target.value)}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
-              />
-              <input
-                type="number"
-                step="1"
-                placeholder="Max Cap kg"
-                value={newBobCap}
-                onChange={(e) => setNewBobCap(e.target.value)}
-                className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
-              />
-              <button
-                type="submit"
-                className="rounded bg-copper-600 hover:bg-copper-500 text-white text-xs font-bold px-2 py-1.5"
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between">
+            <div className="p-5 pb-3 space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                Bobbin Types & Standard Tare Weights ({masters.bobbins.length})
+              </h3>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  postMasterAction(
+                    {
+                      action: 'ADD_BOBBIN',
+                      code: newBobCode,
+                      name: newBobName,
+                      standardTareWeightKg: newBobTare,
+                      maxNetCapacityKg: newBobCap,
+                    },
+                    `Added bobbin type ${newBobCode}.`
+                  );
+                  setNewBobCode('');
+                  setNewBobName('');
+                }}
+                className="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200"
               >
-                + Add Bobbin
-              </button>
-            </form>
+                <input
+                  type="text"
+                  required
+                  placeholder="Code (e.g. DIN-800)"
+                  value={newBobCode}
+                  onChange={(e) => setNewBobCode(e.target.value)}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
+                />
+                <input
+                  type="text"
+                  required
+                  placeholder="Bobbin Description"
+                  value={newBobName}
+                  onChange={(e) => setNewBobName(e.target.value)}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs text-slate-900"
+                />
+                <input
+                  type="number"
+                  step="0.1"
+                  required
+                  placeholder="Tare kg"
+                  value={newBobTare}
+                  onChange={(e) => setNewBobTare(e.target.value)}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
+                />
+                <input
+                  type="number"
+                  step="1"
+                  placeholder="Max Cap kg"
+                  value={newBobCap}
+                  onChange={(e) => setNewBobCap(e.target.value)}
+                  className="rounded bg-white border border-slate-300 px-2 py-1.5 text-xs font-mono text-slate-900"
+                />
+                <button
+                  type="submit"
+                  className="rounded bg-copper-600 hover:bg-copper-500 text-white text-xs font-bold px-2 py-1.5"
+                >
+                  + Add Bobbin
+                </button>
+              </form>
 
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500 uppercase">
-                  <th className="py-2 pr-2">Bobbin Code</th>
-                  <th className="py-2 px-2">Name & Material</th>
-                  <th className="py-2 px-2 text-right">Standard Tare (kg)</th>
-                  <th className="py-2 pl-2 text-right">Max Net Capacity</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {masters.bobbins.map((b: any) => (
-                  <tr key={b.id}>
-                    <td className="py-2 pr-2 font-mono font-bold text-copper-700">
-                      {b.code}
-                    </td>
-                    <td className="py-2 px-2 text-slate-900">
-                      {b.name}{' '}
-                      <span className="text-[10px] text-slate-500">({b.material})</span>
-                    </td>
-                    <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700">
-                      {Number(b.standard_tare_weight_kg).toFixed(2)} kg
-                    </td>
-                    <td className="py-2 pl-2 text-right font-mono text-slate-600">
-                      {Number(b.max_net_capacity_kg).toFixed(0)} kg
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase">
+                      <th className="py-2 px-2">Bobbin Code</th>
+                      <th className="py-2 px-2">Name & Material</th>
+                      <th className="py-2 px-2 text-right">Standard Tare (kg)</th>
+                      <th className="py-2 px-2 text-right">Max Net Capacity</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {bobbinsPager.paginatedItems.map((b: any) => (
+                      <tr key={b.id} className="hover:bg-slate-50">
+                        <td className="py-2 px-2 font-mono font-bold text-copper-700 whitespace-nowrap">
+                          {b.code}
+                        </td>
+                        <td className="py-2 px-2 text-slate-900">
+                          {b.name}{' '}
+                          <span className="text-[10px] text-slate-500">({b.material})</span>
+                        </td>
+                        <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 whitespace-nowrap">
+                          {Number(b.standard_tare_weight_kg).toFixed(2)} kg
+                        </td>
+                        <td className="py-2 px-2 text-right font-mono text-slate-600 whitespace-nowrap">
+                          {Number(b.max_net_capacity_kg).toFixed(0)} kg
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <PaginationBar
+              currentPage={bobbinsPager.currentPage}
+              totalItems={bobbinsPager.totalItems}
+              pageSize={bobbinsPager.pageSize}
+              onPageChange={bobbinsPager.setCurrentPage}
+              itemLabel="bobbins"
+            />
           </div>
 
           {/* 4. Machines, Storage Locations & Finished Cable Categories */}
@@ -867,4 +912,3 @@ export function ReportsMastersSettingsModule({
     </div>
   );
 }
-

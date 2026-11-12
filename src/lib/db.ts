@@ -60,6 +60,9 @@ if (!globalRoot.__copperControlTowerDbV3) {
 const globalForDb = globalRoot.__copperControlTowerDbV3;
 
 function isExternalPostgres(): boolean {
+  if (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true' || process.env.USE_MEMORY_PG === 'true') {
+    return false;
+  }
   return Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '');
 }
 

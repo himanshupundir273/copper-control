@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   Coins,
@@ -10,6 +10,7 @@ import {
   Search,
   ShieldCheck,
 } from 'lucide-react';
+import { PaginationBar, usePagination } from './PaginationBar';
 
 interface TraceabilityAndCostingProps {
   mode: 'TRACEABILITY' | 'COSTING';
@@ -39,6 +40,15 @@ export function TraceabilityAndCostingModule({
   const [queryInput, setQueryInput] = useState(initialQuery || '');
   const [graph, setGraph] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const postedBatches = useMemo(
+    () => (batches || []).filter((b: any) => b.status === 'POSTED'),
+    [batches]
+  );
+
+  const rootContribPager = usePagination<any>(graph?.rootContributions || [], 10);
+  const postedBatchesPager = usePagination<any>(postedBatches, 10);
+  const cableCostPager = usePagination<any>(cableIssues || [], 10);
 
   const fetchGraph = async (qStr?: string) => {
     setLoading(true);
@@ -133,40 +143,42 @@ export function TraceabilityAndCostingModule({
           </div>
 
           {/* Quick Jump Pills */}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-[11px] text-slate-500 font-semibold mr-1">
-              Quick Trace Examples:
-            </span>
-            {quickSamples.map((s, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => {
-                  setQueryInput(s.val);
-                  onSelectQuery(s.val);
-                  fetchGraph(s.val);
-                }}
-                className={`px-2.5 py-1 rounded-md text-xs font-mono border transition-all ${
-                  queryInput === s.val
-                    ? 'bg-copper-100 border-copper-400 text-slate-900 font-bold'
-                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
+          {quickSamples.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-[11px] text-slate-500 font-semibold mr-1">
+                Quick Trace Examples:
+              </span>
+              {quickSamples.map((s, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setQueryInput(s.val);
+                    onSelectQuery(s.val);
+                    fetchGraph(s.val);
+                  }}
+                  className={`px-2.5 py-1 rounded-md text-xs font-mono border transition-all ${
+                    queryInput === s.val
+                      ? 'bg-copper-100 border-copper-400 text-slate-900 font-bold'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Visual 7-Stage Genealogy Pipeline Board */}
         {graph && (
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                   End-to-End Material Genealogy Graph — Focal Target:{' '}
-                  <span className="font-mono text-copper-700">{graph.focalQuery}</span> (
-                  {graph.focalType})
+                  <span className="font-mono text-copper-700">{graph.focalQuery || 'None'}</span> (
+                  {graph.focalType || 'N/A'})
                 </h3>
                 <p className="text-xs text-slate-500">
                   Click any node in the pipeline to pivot traceability around that specific invoice, coil, batch, or cable order.
@@ -197,7 +209,7 @@ export function TraceabilityAndCostingModule({
 
                       <div className="space-y-2.5 flex-1">
                         {colNodes.length === 0 ? (
-                          <div className="text-[11px] text-slate-600 italic py-8 text-center">
+                          <div className="text-[11px] text-slate-400 italic py-8 text-center">
                             No stage records in this chain
                           </div>
                         ) : (
@@ -298,76 +310,90 @@ export function TraceabilityAndCostingModule({
             </div>
 
             {/* Transitive Original Purchase Invoice Attribution Table */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4" />
-                    Preserved Original 8mm Copper Purchase Attribution (Multi-Source & Multi-Stage)
-                  </h4>
-                  <p className="text-[11px] text-slate-500">
-                    When multiple source rods are mixed in RBD or downstream drawing, all contributing original purchase invoices and their exact rates are preserved.
-                  </p>
-                </div>
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="p-4 pb-3 bg-slate-50/60 border-b border-slate-200">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4" />
+                  Preserved Original 8mm Copper Purchase Attribution (Multi-Source & Multi-Stage)
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  When multiple source rods are mixed in RBD or downstream drawing, all contributing original purchase invoices and their exact rates are preserved.
+                </p>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
                   <thead>
-                    <tr className="border-b border-slate-200 text-slate-500 uppercase">
-                      <th className="py-2 pr-3">Original Purchase Invoice</th>
-                      <th className="py-2 px-3">Supplier & Invoice Date</th>
-                      <th className="py-2 px-3">Source 8mm Internal Coil ID</th>
-                      <th className="py-2 px-3">Supplier Coil / Heat #</th>
-                      <th className="py-2 px-3 text-right">Contribution Share %</th>
-                      <th className="py-2 px-3 text-right">Attributed Weight (kg)</th>
-                      <th className="py-2 px-3 text-right">Original Purchase Rate/kg</th>
-                      <th className="py-2 pl-3">Allocation Precision</th>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase">
+                      <th className="py-2.5 px-3">Original Purchase Invoice</th>
+                      <th className="py-2.5 px-3">Supplier & Invoice Date</th>
+                      <th className="py-2.5 px-3">Source 8mm Internal Coil ID</th>
+                      <th className="py-2.5 px-3">Supplier Coil / Heat #</th>
+                      <th className="py-2.5 px-3 text-right">Contribution Share %</th>
+                      <th className="py-2.5 px-3 text-right">Attributed Weight (kg)</th>
+                      <th className="py-2.5 px-3 text-right">Original Purchase Rate/kg</th>
+                      <th className="py-2.5 px-3">Allocation Precision</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {graph.rootContributions.map((rc: any, i: number) => (
-                      <tr key={i} className="hover:bg-white">
-                        <td className="py-2 pr-3 font-mono font-bold text-copper-700">
-                          {rc.invoiceNumber}
-                        </td>
-                        <td className="py-2 px-3">
-                          <div className="text-slate-900 font-semibold">{rc.supplierName}</div>
-                          <div className="text-[10px] font-mono text-slate-500">
-                            {rc.invoiceDate} • {rc.companyName}
-                          </div>
-                        </td>
-                        <td className="py-2 px-3 font-mono font-bold text-sky-700">
-                          {rc.rootCoilCode}
-                        </td>
-                        <td className="py-2 px-3 font-mono text-slate-600">
-                          {rc.supplierCoilNumber || '-'} / {rc.supplierLotHeatNumber || '-'}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
-                          {Number(rc.contributionPct).toFixed(2)}%
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono text-emerald-700">
-                          {Number(rc.attributedWeightKg).toFixed(2)} kg
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-copper-700">
-                          ₹{Number(rc.originalRatePerKg).toFixed(2)}/kg
-                        </td>
-                        <td className="py-2 pl-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                              rc.allocationPrecision === 'EXACT'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-sky-100 text-sky-700'
-                            }`}
-                          >
-                            {rc.allocationPrecision} (Stage Depth: {rc.stageDepth})
-                          </span>
+                    {rootContribPager.paginatedItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-8 text-center text-slate-400">
+                          No purchase attribution records found for the current query.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      rootContribPager.paginatedItems.map((rc: any, i: number) => (
+                        <tr key={i} className="hover:bg-slate-50">
+                          <td className="py-2.5 px-3 font-mono font-bold text-copper-700 whitespace-nowrap">
+                            {rc.invoiceNumber}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="text-slate-900 font-semibold">{rc.supplierName}</div>
+                            <div className="text-[10px] font-mono text-slate-500">
+                              {rc.invoiceDate} • {rc.companyName}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-sky-700 whitespace-nowrap">
+                            {rc.rootCoilCode}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-slate-600 whitespace-nowrap">
+                            {rc.supplierCoilNumber || '-'} / {rc.supplierLotHeatNumber || '-'}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                            {Number(rc.contributionPct).toFixed(2)}%
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono text-emerald-700 whitespace-nowrap">
+                            {Number(rc.attributedWeightKg).toFixed(2)} kg
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-copper-700 whitespace-nowrap">
+                            ₹{Number(rc.originalRatePerKg).toFixed(2)}/kg
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                                rc.allocationPrecision === 'EXACT'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-sky-100 text-sky-700'
+                              }`}
+                            >
+                              {rc.allocationPrecision} (Stage Depth: {rc.stageDepth})
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
+              <PaginationBar
+                currentPage={rootContribPager.currentPage}
+                totalItems={rootContribPager.totalItems}
+                pageSize={rootContribPager.pageSize}
+                onPageChange={rootContribPager.setCurrentPage}
+                onPageSizeChange={rootContribPager.setPageSize}
+                itemLabel="source attributions"
+              />
             </div>
           </div>
         )}
@@ -376,210 +402,243 @@ export function TraceabilityAndCostingModule({
   }
 
   // MODE === 'COSTING' (Module 8: Copper Costing Engine)
-  const postedBatches = batches.filter((b: any) => b.status === 'POSTED');
-
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-700">
-              <Coins className="w-5 h-5" />
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="p-6 pb-3 space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-700">
+                <Coins className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900">
+                  Module 8: Copper Costing Engine — Source Rate Preservation, Scrap Credit & Yield Costing
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Tracks original input copper value, mixed-batch weighted averages, separate stage processing costs, scrap recovery credits, and usable output cost/kg.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs text-amber-900 flex items-center gap-2 max-w-md">
+              <Info className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>
+                <strong>Costing Scope Note:</strong> Reflects actual copper & drawing conversion cost. Full cable ROI will additionally incorporate insulation polymers, armor, labor, energy & selling price.
+              </span>
+            </div>
+          </div>
+
+          {/* Costing Formula Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-mono bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div>
+              <div className="text-[10px] uppercase text-slate-500">1. Input Copper Cost</div>
+              <div className="text-slate-900 font-bold mt-0.5">
+                Σ (Consumed kg × Source Cost/kg)
+              </div>
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Module 8: Copper Costing Engine — Source Rate Preservation, Scrap Credit & Yield Costing
-              </h2>
-              <p className="text-xs text-slate-500">
-                Tracks original input copper value, mixed-batch weighted averages, separate stage processing costs, scrap recovery credits, and usable output cost/kg.
-              </p>
+              <div className="text-[10px] uppercase text-slate-500">2. + Stage Conversion Cost</div>
+              <div className="text-sky-700 font-bold mt-0.5">
+                + (Input kg × Stage Processing Rate/kg)
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase text-slate-500">3. − Scrap Recovery Credit</div>
+              <div className="text-emerald-700 font-bold mt-0.5">
+                − (Recoverable Scrap kg × Recovery Rate)
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase text-slate-500">4. = Usable Output Cost/kg</div>
+              <div className="text-copper-700 font-bold mt-0.5">
+                Net Batch Cost ÷ Usable Output kg
+              </div>
             </div>
           </div>
 
-          <div className="rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs text-amber-900 flex items-center gap-2 max-w-md">
-            <Info className="w-4 h-4 text-amber-700 shrink-0" />
-            <span>
-              <strong>Costing Scope Note:</strong> Reflects actual copper & drawing conversion cost. Full cable ROI will additionally incorporate insulation polymers, armor, labor, energy & selling price.
-            </span>
-          </div>
-        </div>
-
-        {/* Costing Formula Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs font-mono bg-white p-4 rounded-xl border border-slate-200">
-          <div>
-            <div className="text-[10px] uppercase text-slate-500">1. Input Copper Cost</div>
-            <div className="text-slate-900 font-bold mt-0.5">
-              Σ (Consumed kg × Source Cost/kg)
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase text-slate-500">2. + Stage Conversion Cost</div>
-            <div className="text-sky-700 font-bold mt-0.5">
-              + (Input kg × Stage Processing Rate/kg)
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase text-slate-500">3. − Scrap Recovery Credit</div>
-            <div className="text-emerald-700 font-bold mt-0.5">
-              − (Recoverable Scrap kg × Recovery Rate)
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase text-slate-500">4. = Usable Output Cost/kg</div>
-            <div className="text-copper-700 font-bold mt-0.5">
-              Net Batch Cost ÷ Usable Output kg
-            </div>
-          </div>
-        </div>
-
-        {/* Batch-wise Costing Breakdown Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500 uppercase">
-                <th className="py-2.5 pr-2">Batch No</th>
-                <th className="py-2.5 px-2">Process & Route</th>
-                <th className="py-2.5 px-2 text-right">Input / Usable Out</th>
-                <th className="py-2.5 px-2 text-right">Blended Orig Rate</th>
-                <th className="py-2.5 px-2 text-right">Input Copper Value</th>
-                <th className="py-2.5 px-2 text-right">+ Processing Cost</th>
-                <th className="py-2.5 px-2 text-right">− Scrap Credit</th>
-                <th className="py-2.5 px-2 text-right">= Net Batch Cost</th>
-                <th className="py-2.5 px-2 text-right">Usable Output Cost/kg</th>
-                <th className="py-2.5 pl-2 text-right">Actual vs Std Wastage</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {postedBatches.map((b: any) => {
-                const actualWastage = Number(b.actual_wastage_pct);
-                const stdWastage = Number(b.standard_wastage_pct);
-                const excessWastage = actualWastage - stdWastage;
-
-                return (
-                  <tr key={b.id} className="hover:bg-slate-50">
-                    <td className="py-3 pr-2 font-mono font-bold text-copper-700">
-                      {b.batch_number}
-                      {b.is_mixed_source && (
-                        <span className="ml-1.5 px-1.5 py-0.5 text-[9px] rounded bg-sky-100 text-sky-700">
-                          MIXED RATES
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="font-semibold text-slate-900">{b.process_code}</div>
-                      <div className="text-[10px] font-mono text-slate-500">
-                        {Number(b.input_mm).toFixed(2)} → {Number(b.output_mm).toFixed(2)} mm
-                      </div>
-                    </td>
-                    <td className="py-3 px-2 text-right font-mono">
-                      <div className="text-slate-600">
-                        In: {Number(b.total_input_weight_kg).toFixed(1)} kg
-                      </div>
-                      <div className="text-emerald-700 font-bold">
-                        Out: {Number(b.total_usable_output_kg).toFixed(1)} kg
-                      </div>
-                    </td>
-                    <td className="py-3 px-2 text-right font-mono text-slate-900 font-bold">
-                      ₹{Number(b.weighted_avg_input_rate_per_kg).toFixed(2)}/kg
-                    </td>
-                    <td className="py-3 px-2 text-right font-mono text-slate-700">
-                      ₹{Number(b.input_copper_cost_total).toLocaleString('en-IN', {
-                        maximumFractionDigits: 0,
-                      })}
-                    </td>
-                    <td className="py-3 px-2 text-right font-mono text-sky-700">
-                      +₹{Number(b.processing_cost_total).toLocaleString('en-IN', {
-                        maximumFractionDigits: 0,
-                      })}
-                      <div className="text-[10px] text-slate-500">
-                        (@ ₹{Number(b.processing_cost_per_kg).toFixed(1)}/kg)
-                      </div>
-                    </td>
-                    <td className="py-3 px-2 text-right font-mono text-emerald-700">
-                      -₹{Number(b.scrap_recovery_credit_total).toLocaleString('en-IN', {
-                        maximumFractionDigits: 0,
-                      })}
-                    </td>
-                    <td className="py-3 px-2 text-right font-mono font-bold text-slate-900">
-                      ₹{Number(b.net_batch_cost_total).toLocaleString('en-IN', {
-                        maximumFractionDigits: 0,
-                      })}
-                    </td>
-                    <td className="py-3 px-2 text-right font-mono font-bold text-copper-700 text-sm">
-                      ₹{Number(b.usable_output_cost_per_kg).toFixed(2)}/kg
-                    </td>
-                    <td className="py-3 pl-2 text-right font-mono">
-                      <div
-                        className={`font-bold ${
-                          excessWastage > 0.15 ? 'text-rose-600' : 'text-emerald-700'
-                        }`}
-                      >
-                        {actualWastage.toFixed(2)}% vs {stdWastage.toFixed(2)}%
-                      </div>
-                      <div className="text-[10px] text-slate-500">
-                        Yield: {Number(b.yield_pct).toFixed(2)}%
-                      </div>
+          {/* Batch-wise Costing Breakdown Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase">
+                  <th className="py-2.5 px-2.5">Batch No</th>
+                  <th className="py-2.5 px-2.5">Process & Route</th>
+                  <th className="py-2.5 px-2.5 text-right">Input / Usable Out</th>
+                  <th className="py-2.5 px-2.5 text-right">Blended Orig Rate</th>
+                  <th className="py-2.5 px-2.5 text-right">Input Copper Value</th>
+                  <th className="py-2.5 px-2.5 text-right">+ Processing Cost</th>
+                  <th className="py-2.5 px-2.5 text-right">− Scrap Credit</th>
+                  <th className="py-2.5 px-2.5 text-right">= Net Batch Cost</th>
+                  <th className="py-2.5 px-2.5 text-right">Usable Output Cost/kg</th>
+                  <th className="py-2.5 px-2.5 text-right">Actual vs Std Wastage</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {postedBatchesPager.paginatedItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-8 text-center text-slate-400">
+                      No posted production batches available for costing analysis yet.
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ) : (
+                  postedBatchesPager.paginatedItems.map((b: any) => {
+                    const actualWastage = Number(b.actual_wastage_pct);
+                    const stdWastage = Number(b.standard_wastage_pct);
+                    const excessWastage = actualWastage - stdWastage;
+
+                    return (
+                      <tr key={b.id} className="hover:bg-slate-50">
+                        <td className="py-3 px-2.5 font-mono font-bold text-copper-700 whitespace-nowrap">
+                          {b.batch_number}
+                          {b.is_mixed_source && (
+                            <span className="ml-1.5 px-1.5 py-0.5 text-[9px] rounded bg-sky-100 text-sky-700">
+                              MIXED RATES
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-2.5 whitespace-nowrap">
+                          <div className="font-semibold text-slate-900">{b.process_code}</div>
+                          <div className="text-[10px] font-mono text-slate-500">
+                            {Number(b.input_mm).toFixed(2)} → {Number(b.output_mm).toFixed(2)} mm
+                          </div>
+                        </td>
+                        <td className="py-3 px-2.5 text-right font-mono whitespace-nowrap">
+                          <div className="text-slate-600">
+                            In: {Number(b.total_input_weight_kg).toFixed(1)} kg
+                          </div>
+                          <div className="text-emerald-700 font-bold">
+                            Out: {Number(b.total_usable_output_kg).toFixed(1)} kg
+                          </div>
+                        </td>
+                        <td className="py-3 px-2.5 text-right font-mono text-slate-900 font-bold whitespace-nowrap">
+                          ₹{Number(b.weighted_avg_input_rate_per_kg).toFixed(2)}/kg
+                        </td>
+                        <td className="py-3 px-2.5 text-right font-mono text-slate-700 whitespace-nowrap">
+                          ₹{Number(b.input_copper_cost_total).toLocaleString('en-IN', {
+                            maximumFractionDigits: 0,
+                          })}
+                        </td>
+                        <td className="py-3 px-2.5 text-right font-mono text-sky-700 whitespace-nowrap">
+                          +₹{Number(b.processing_cost_total).toLocaleString('en-IN', {
+                            maximumFractionDigits: 0,
+                          })}
+                          <div className="text-[10px] text-slate-500">
+                            (@ ₹{Number(b.processing_cost_per_kg).toFixed(1)}/kg)
+                          </div>
+                        </td>
+                        <td className="py-3 px-2.5 text-right font-mono text-emerald-700 whitespace-nowrap">
+                          -₹{Number(b.scrap_recovery_credit_total).toLocaleString('en-IN', {
+                            maximumFractionDigits: 0,
+                          })}
+                        </td>
+                        <td className="py-3 px-2.5 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                          ₹{Number(b.net_batch_cost_total).toLocaleString('en-IN', {
+                            maximumFractionDigits: 0,
+                          })}
+                        </td>
+                        <td className="py-3 px-2.5 text-right font-mono font-bold text-copper-700 text-sm whitespace-nowrap">
+                          ₹{Number(b.usable_output_cost_per_kg).toFixed(2)}/kg
+                        </td>
+                        <td className="py-3 px-2.5 text-right font-mono whitespace-nowrap">
+                          <div
+                            className={`font-bold ${
+                              excessWastage > 0.15 ? 'text-rose-600' : 'text-emerald-700'
+                            }`}
+                          >
+                            {actualWastage.toFixed(2)}% vs {stdWastage.toFixed(2)}%
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            Yield: {Number(b.yield_pct).toFixed(2)}%
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
+        <PaginationBar
+          currentPage={postedBatchesPager.currentPage}
+          totalItems={postedBatchesPager.totalItems}
+          pageSize={postedBatchesPager.pageSize}
+          onPageChange={postedBatchesPager.setCurrentPage}
+          onPageSizeChange={postedBatchesPager.setPageSize}
+          itemLabel="batches"
+        />
       </div>
 
       {/* Finished Cable Batch Cost Attribution Summary */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
-        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-          <Layers className="w-4 h-4 text-copper-600" />
-          Finished Cable Batch Copper Cost Attribution ({cableIssues.length})
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500 uppercase">
-                <th className="py-2 pr-3">Cable Batch No</th>
-                <th className="py-2 px-3">Product & Category</th>
-                <th className="py-2 px-3">Company</th>
-                <th className="py-2 px-3">Issuance Method & Precision</th>
-                <th className="py-2 px-3 text-right">Copper Consumed (kg)</th>
-                <th className="py-2 px-3 text-right">Attributed Copper Rate/kg</th>
-                <th className="py-2 pl-3 text-right">Total Copper Material Cost</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {cableIssues.map((ci: any) => (
-                <tr key={ci.id}>
-                  <td className="py-2.5 pr-3 font-mono font-bold text-copper-700">
-                    {ci.cable_batch_number}
-                  </td>
-                  <td className="py-2.5 px-3 text-slate-900">
-                    {ci.cable_product_description}
-                    <div className="text-[10px] text-slate-500">{ci.cable_category_name}</div>
-                  </td>
-                  <td className="py-2.5 px-3 text-slate-700">{ci.owner_company_name}</td>
-                  <td className="py-2.5 px-3 font-mono">
-                    <span className="text-sky-700">{ci.issue_mode}</span> •{' '}
-                    <span className="text-amber-800">{ci.traceability_precision}</span>
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
-                    {Number(ci.total_issued_weight_kg).toFixed(2)} kg
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-copper-700 font-bold">
-                    ₹{Number(ci.weighted_avg_copper_cost_per_kg).toFixed(2)}/kg
-                  </td>
-                  <td className="py-2.5 pl-3 text-right font-mono font-bold text-emerald-700">
-                    ₹{Number(ci.total_attributed_copper_cost).toLocaleString('en-IN', {
-                      minimumFractionDigits: 2,
-                    })}
-                  </td>
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="p-5 pb-3 space-y-3">
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <Layers className="w-4 h-4 text-copper-600" />
+            Finished Cable Batch Copper Cost Attribution ({cableIssues.length})
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase">
+                  <th className="py-2.5 px-3">Cable Batch No</th>
+                  <th className="py-2.5 px-3">Product & Category</th>
+                  <th className="py-2.5 px-3">Company</th>
+                  <th className="py-2.5 px-3">Issuance Method & Precision</th>
+                  <th className="py-2.5 px-3 text-right">Copper Consumed (kg)</th>
+                  <th className="py-2.5 px-3 text-right">Attributed Copper Rate/kg</th>
+                  <th className="py-2.5 px-3 text-right">Total Copper Material Cost</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {cableCostPager.paginatedItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-400">
+                      No finished cable batch copper issues recorded yet.
+                    </td>
+                  </tr>
+                ) : (
+                  cableCostPager.paginatedItems.map((ci: any) => (
+                    <tr key={ci.id} className="hover:bg-slate-50">
+                      <td className="py-2.5 px-3 font-mono font-bold text-copper-700 whitespace-nowrap">
+                        {ci.cable_batch_number}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-900">
+                        {ci.cable_product_description}
+                        <div className="text-[10px] text-slate-500">{ci.cable_category_name}</div>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-700 whitespace-nowrap">{ci.owner_company_name}</td>
+                      <td className="py-2.5 px-3 font-mono whitespace-nowrap">
+                        <span className="text-sky-700">{ci.issue_mode}</span> •{' '}
+                        <span className="text-amber-800">{ci.traceability_precision}</span>
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                        {Number(ci.total_issued_weight_kg).toFixed(2)} kg
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono text-copper-700 font-bold whitespace-nowrap">
+                        ₹{Number(ci.weighted_avg_copper_cost_per_kg).toFixed(2)}/kg
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700 whitespace-nowrap">
+                        ₹{Number(ci.total_attributed_copper_cost).toLocaleString('en-IN', {
+                          minimumFractionDigits: 2,
+                        })}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
+        <PaginationBar
+          currentPage={cableCostPager.currentPage}
+          totalItems={cableCostPager.totalItems}
+          pageSize={cableCostPager.pageSize}
+          onPageChange={cableCostPager.setCurrentPage}
+          onPageSizeChange={cableCostPager.setPageSize}
+          itemLabel="cable batches"
+        />
       </div>
     </div>
   );
 }
-

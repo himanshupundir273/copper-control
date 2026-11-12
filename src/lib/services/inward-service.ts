@@ -5,6 +5,7 @@ import crypto from 'crypto';
 export interface InwardCoilInput {
   supplierCoilNumber?: string;
   supplierLotHeatNumber?: string;
+  vendorBilledWeightKg?: number | string;
   grossWeightKg: number | string;
   tareWeightKg?: number | string;
   remarks?: string;
@@ -113,8 +114,9 @@ export async function createInwardReceipt(
     const effectiveRatePerKg =
       input.rateUnit === 'PER_MT' ? rawRate.dividedBy(1000) : rawRate;
 
-    // 3. Validate coils and calculate total net weight
+    // 3. Validate coils and calculate total net weight & vendor billed weight
     let totalReceivedWeight = D(0);
+    let totalVendorBilledWeight = D(0);
     const validatedCoils = input.coils.map((c, idx) => {
       const gross = D(c.grossWeightKg);
       const tare = D(c.tareWeightKg ?? 0);
@@ -124,15 +126,24 @@ export async function createInwardReceipt(
           `Coil #${idx + 1}: Net weight (${net.toFixed(2)} kg) must be positive (Gross: ${gross.toFixed(2)}, Tare: ${tare.toFixed(2)}).`
         );
       }
+      const vendorBilled =
+        c.vendorBilledWeightKg !== undefined && String(c.vendorBilledWeightKg).trim() !== ''
+          ? D(c.vendorBilledWeightKg)
+          : net;
+      const weightDiffLoss = net.minus(vendorBilled);
       totalReceivedWeight = totalReceivedWeight.plus(net);
+      totalVendorBilledWeight = totalVendorBilledWeight.plus(vendorBilled);
       return {
         ...c,
         gross,
         tare,
         net,
+        vendorBilled,
+        weightDiffLoss,
       };
     });
 
+    const totalWeightDiffLoss = totalReceivedWeight.minus(totalVendorBilledWeight);
     const totalInvoiceValue = totalReceivedWeight.times(effectiveRatePerKg);
     const currency = input.currency || company.base_currency || 'INR';
     const isDemo = Boolean(input.isDemo);
@@ -142,15 +153,15 @@ export async function createInwardReceipt(
       `INSERT INTO purchase_invoices (
         invoice_number, purchasing_company_id, supplier_id, invoice_date, receipt_date,
         material_category_id, copper_grade, input_diameter_id, supplier_lot_heat_number,
-        number_of_coils, total_received_weight_kg, purchase_rate, rate_unit,
-        effective_rate_per_kg, currency, total_invoice_copper_value,
+        number_of_coils, vendor_billed_weight_kg, total_received_weight_kg, weight_diff_loss_kg,
+        purchase_rate, rate_unit, effective_rate_per_kg, currency, total_invoice_copper_value,
         storage_location_id, supporting_doc_ref, remarks, is_demo
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9,
         $10, $11, $12, $13,
-        $14, $15, $16,
-        $17, $18, $19, $20
+        $14, $15, $16, $17, $18,
+        $19, $20, $21, $22
       ) RETURNING id`,
       [
         input.invoiceNumber.trim(),
@@ -163,7 +174,9 @@ export async function createInwardReceipt(
         input.inputDiameterId,
         input.supplierLotHeatNumber?.trim() || null,
         validatedCoils.length,
+        toWeightDb(totalVendorBilledWeight),
         toWeightDb(totalReceivedWeight),
+        toWeightDb(totalWeightDiffLoss),
         toMoneyDb(rawRate),
         input.rateUnit,
         toMoneyDb(effectiveRatePerKg),
@@ -194,6 +207,7 @@ export async function createInwardReceipt(
           owner_company_id, plant_id, current_location_id,
           origin_type, source_invoice_id, material_category_id, copper_grade,
           diameter_id, processing_stage,
+          vendor_billed_weight_kg, weight_diff_loss_kg,
           gross_weight_kg, tare_weight_kg, initial_net_weight_kg,
           available_weight_kg, reserved_weight_kg, consumed_weight_kg,
           status, receipt_or_production_date,
@@ -204,11 +218,12 @@ export async function createInwardReceipt(
           $4, $5, $6,
           'INWARD_PURCHASE', $7, $8, $9,
           $10, 'RAW_8MM_ROD',
-          $11, $12, $13,
-          $13, 0, 0,
-          'AVAILABLE', $14,
-          $15, 0, $15,
-          $16, 'EXACT_SINGLE_SOURCE', $17, $18
+          $11, $12,
+          $13, $14, $15,
+          $15, 0, 0,
+          'AVAILABLE', $16,
+          $17, 0, $17,
+          $18, 'EXACT_SINGLE_SOURCE', $19, $20
         ) RETURNING id`,
         [
           coilCode,
@@ -221,6 +236,8 @@ export async function createInwardReceipt(
           input.materialCategoryId,
           input.copperGrade.trim(),
           input.inputDiameterId,
+          toWeightDb(c.vendorBilled),
+          toWeightDb(c.weightDiffLoss),
           toWeightDb(c.gross),
           toWeightDb(c.tare),
           toWeightDb(c.net),

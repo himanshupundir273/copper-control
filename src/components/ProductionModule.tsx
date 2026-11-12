@@ -11,6 +11,8 @@ import {
   Scale,
   Trash2,
 } from 'lucide-react';
+import { EditableMasterSelect } from './EditableMasterSelect';
+import { PaginationBar, usePagination } from './PaginationBar';
 
 interface ProductionModuleProps {
   mode: 'RBD' | 'DOWNSTREAM';
@@ -161,27 +163,33 @@ export function ProductionModule({
       bobbinTypeId: number;
       grossWeightKg: string;
       tareWeightKg: string;
+      readingMeters: string;
+      isHardCopper: boolean;
       storageLocationId: number;
       remarks: string;
     }>
   >([]);
 
   useEffect(() => {
-    const tare = Number(defaultBobbin?.standard_tare_weight_kg ?? 48.5);
+    const tare = Number(defaultBobbin?.standard_tare_weight_kg ?? 74.9);
     setOutputRows([
       {
-        outputBobbinNumber: mode === 'RBD' ? 'DIN630-NEW-01' : 'CFN-SPL-NEW-01',
+        outputBobbinNumber: mode === 'RBD' ? 'SR-1564' : 'CFN-SPL-NEW-01',
         bobbinTypeId: defaultBobbin?.id || 1,
-        grossWeightKg: (495 + tare).toFixed(2),
+        grossWeightKg: (445 + tare).toFixed(2),
         tareWeightKg: tare.toFixed(2),
+        readingMeters: '32400',
+        isHardCopper: false,
         storageLocationId: defaultLocation || 1,
         remarks: '',
       },
       {
-        outputBobbinNumber: mode === 'RBD' ? 'DIN630-NEW-02' : 'CFN-SPL-NEW-02',
+        outputBobbinNumber: mode === 'RBD' ? 'SR-1565' : 'CFN-SPL-NEW-02',
         bobbinTypeId: defaultBobbin?.id || 1,
-        grossWeightKg: (495 + tare).toFixed(2),
+        grossWeightKg: (445 + tare).toFixed(2),
         tareWeightKg: tare.toFixed(2),
+        readingMeters: '32400',
+        isHardCopper: false,
         storageLocationId: defaultLocation || 1,
         remarks: '',
       },
@@ -290,16 +298,18 @@ export function ProductionModule({
   };
 
   const addOutputBobbin = () => {
-    const tare = Number(defaultBobbin?.standard_tare_weight_kg ?? 48.5);
+    const tare = Number(defaultBobbin?.standard_tare_weight_kg ?? 74.9);
     setOutputRows((prev) => [
       ...prev,
       {
-        outputBobbinNumber: `${mode === 'RBD' ? 'DIN630-NEW-0' : 'CFN-SPL-NEW-0'}${
-          prev.length + 1
+        outputBobbinNumber: `${mode === 'RBD' ? 'SR-156' : 'CFN-SPL-NEW-0'}${
+          prev.length + 4
         }`,
         bobbinTypeId: defaultBobbin?.id || 1,
-        grossWeightKg: (450 + tare).toFixed(2),
+        grossWeightKg: (445 + tare).toFixed(2),
         tareWeightKg: tare.toFixed(2),
+        readingMeters: '32400',
+        isHardCopper: false,
         storageLocationId: defaultLocation || 1,
         remarks: '',
       },
@@ -349,6 +359,8 @@ export function ProductionModule({
             bobbinTypeId: Number(o.bobbinTypeId),
             grossWeightKg: Number(o.grossWeightKg),
             tareWeightKg: Number(o.tareWeightKg),
+            readingMeters: o.readingMeters ? Number(o.readingMeters) : null,
+            isHardCopper: Boolean(o.isHardCopper),
             storageLocationId: Number(o.storageLocationId),
             remarks: o.remarks,
           })),
@@ -410,6 +422,14 @@ export function ProductionModule({
     }
     return batches.filter((b: any) => b.process_code !== 'RBD');
   }, [batches, mode]);
+
+  const rbdBobbins = useMemo(
+    () => coils.filter((c: any) => c.origin_type === 'RBD_OUTPUT'),
+    [coils]
+  );
+
+  const batchesPager = usePagination<any>(filteredBatches, 10);
+  const rbdBobbinsPager = usePagination<any>(rbdBobbins, 10);
 
   return (
     <div className="space-y-6">
@@ -487,33 +507,33 @@ export function ProductionModule({
           </div>
         )}
 
-        {/* Batch Metadata Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Legal Stock Owner *
-            </label>
-            <select
-              value={selectedCompanyId}
-              onChange={(e) => setSelectedCompanyId(Number(e.target.value))}
-              className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm text-slate-900"
-            >
-              {masters.companies.map((c: any) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Batch Metadata Controls - Structured 3-column layout for wide, uncluttered fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <EditableMasterSelect
+            label="Legal Stock Owner"
+            required
+            entityType="COMPANY"
+            addAction="ADD_COMPANY"
+            value={selectedCompanyId}
+            onChange={(id) => setSelectedCompanyId(id)}
+            onRefresh={onRefresh}
+            placeholderPrimary="Company Name"
+            options={masters.companies.map((c: any) => ({
+              id: c.id,
+              label: c.name,
+            }))}
+          />
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Process Stage *
-            </label>
+            <div className="h-5 mb-1.5 flex items-center">
+              <label className="text-xs font-semibold text-slate-600 truncate">
+                Process Stage *
+              </label>
+            </div>
             <select
               value={processTypeId}
               onChange={(e) => setProcessTypeId(Number(e.target.value))}
-              className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm text-slate-900"
+              className="w-full h-[38px] rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm text-slate-900"
             >
               {availableProcesses.map((p: any) => (
                 <option key={p.id} value={p.id}>
@@ -524,13 +544,15 @@ export function ProductionModule({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Machine *
-            </label>
+            <div className="h-5 mb-1.5 flex items-center">
+              <label className="text-xs font-semibold text-slate-600 truncate">
+                Machine *
+              </label>
+            </div>
             <select
               value={machineId}
               onChange={(e) => setMachineId(Number(e.target.value))}
-              className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm text-slate-900"
+              className="w-full h-[38px] rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm text-slate-900"
             >
               {(filteredMachines.length > 0 ? filteredMachines : masters.machines).map(
                 (m: any) => (
@@ -542,49 +564,51 @@ export function ProductionModule({
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Input Diameter *
-            </label>
-            <select
-              value={inputDiameterId}
-              onChange={(e) => setInputDiameterId(Number(e.target.value))}
-              className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm font-mono text-slate-900"
-            >
-              {masters.diameters.map((d: any) => (
-                <option key={d.id} value={d.id}>
-                  {Number(d.diameter_mm).toFixed(2)} mm ({d.category})
-                </option>
-              ))}
-            </select>
-          </div>
+          <EditableMasterSelect
+            label="Input Diameter"
+            required
+            entityType="DIAMETER"
+            addAction="ADD_DIAMETER"
+            value={inputDiameterId}
+            onChange={(id) => setInputDiameterId(id)}
+            onRefresh={onRefresh}
+            isNumericPrimary
+            placeholderPrimary="mm (e.g. 8.00)"
+            className="font-mono"
+            options={masters.diameters.map((d: any) => ({
+              id: d.id,
+              label: `${Number(d.diameter_mm).toFixed(3)} mm (${d.category})`,
+            }))}
+          />
+
+          <EditableMasterSelect
+            label="Output Diameter"
+            required
+            entityType="DIAMETER"
+            addAction="ADD_DIAMETER"
+            value={outputDiameterId}
+            onChange={(id) => setOutputDiameterId(id)}
+            onRefresh={onRefresh}
+            isNumericPrimary
+            placeholderPrimary="mm (e.g. 1.40)"
+            className="font-mono text-copper-700 font-bold"
+            options={masters.diameters.map((d: any) => ({
+              id: d.id,
+              label: `${Number(d.diameter_mm).toFixed(3)} mm`,
+            }))}
+          />
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Output Diameter *
-            </label>
-            <select
-              value={outputDiameterId}
-              onChange={(e) => setOutputDiameterId(Number(e.target.value))}
-              className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm font-mono text-copper-700 font-bold"
-            >
-              {masters.diameters.map((d: any) => (
-                <option key={d.id} value={d.id}>
-                  {Number(d.diameter_mm).toFixed(2)} mm {d.verification_status === 'PENDING_CONFIRMATION' ? '[Pending]' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Production Date *
-            </label>
+            <div className="h-5 mb-1.5 flex items-center">
+              <label className="text-xs font-semibold text-slate-600 truncate">
+                Production Date *
+              </label>
+            </div>
             <input
               type="date"
               value={productionDate}
               onChange={(e) => setProductionDate(e.target.value)}
-              className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm font-mono text-slate-900"
+              className="w-full h-[38px] rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm font-mono text-slate-900"
             />
           </div>
         </div>
@@ -772,12 +796,14 @@ export function ProductionModule({
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500 uppercase">
                   <th className="py-2 pr-2">#</th>
-                  <th className="py-2 px-2">Output Bobbin / Spool No *</th>
-                  <th className="py-2 px-2">Bobbin Type (Auto Tare)</th>
-                  <th className="py-2 px-2">Gross Weight (kg) *</th>
-                  <th className="py-2 px-2">Bobbin Tare (kg) *</th>
-                  <th className="py-2 px-2 text-right">Net Copper Weight (kg)</th>
-                  <th className="py-2 px-2">Storage Location</th>
+                  <th className="py-2 px-2">Bobbin Sr. NO *</th>
+                  <th className="py-2 px-2">Bobbin Type</th>
+                  <th className="py-2 px-2">G. Weight (kg) *</th>
+                  <th className="py-2 px-2">B. Weight Tare (kg) *</th>
+                  <th className="py-2 px-2 text-right">N. Weight Net (kg)</th>
+                  <th className="py-2 px-2">Reading (Meters)</th>
+                  <th className="py-2 px-2 text-center">Hard (H)</th>
+                  <th className="py-2 px-2">Location</th>
                   <th className="py-2 pl-2"></th>
                 </tr>
               </thead>
@@ -802,7 +828,7 @@ export function ProductionModule({
                               )
                             )
                           }
-                          className="w-36 rounded bg-white border border-slate-300 px-2.5 py-1.5 font-mono text-slate-900"
+                          className="w-28 rounded bg-white border border-slate-300 px-2.5 py-1.5 font-mono text-slate-900"
                         />
                       </td>
                       <td className="py-2 px-2">
@@ -820,11 +846,11 @@ export function ProductionModule({
                               )
                             );
                           }}
-                          className="w-44 rounded bg-white border border-slate-300 px-2 py-1.5 text-slate-900"
+                          className="w-36 rounded bg-white border border-slate-300 px-2 py-1.5 text-slate-900"
                         >
                           {masters.bobbins.map((b: any) => (
                             <option key={b.id} value={b.id}>
-                              {b.code} (Tare: {Number(b.standard_tare_weight_kg).toFixed(1)} kg)
+                              {b.code} ({Number(b.standard_tare_weight_kg).toFixed(1)} kg)
                             </option>
                           ))}
                         </select>
@@ -841,7 +867,7 @@ export function ProductionModule({
                               )
                             )
                           }
-                          className="w-28 rounded bg-white border border-slate-300 px-2.5 py-1.5 font-mono font-bold text-slate-900"
+                          className="w-24 rounded bg-white border border-slate-300 px-2.5 py-1.5 font-mono font-bold text-slate-900"
                         />
                       </td>
                       <td className="py-2 px-2">
@@ -863,6 +889,36 @@ export function ProductionModule({
                         {net.toFixed(2)} kg
                       </td>
                       <td className="py-2 px-2">
+                        <input
+                          type="number"
+                          step="1"
+                          placeholder="e.g. 32400"
+                          value={out.readingMeters}
+                          onChange={(e) =>
+                            setOutputRows((prev) =>
+                              prev.map((r, i) =>
+                                i === idx ? { ...r, readingMeters: e.target.value } : r
+                              )
+                            )
+                          }
+                          className="w-24 rounded bg-white border border-slate-300 px-2 py-1.5 font-mono text-slate-900"
+                        />
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={out.isHardCopper}
+                          onChange={(e) =>
+                            setOutputRows((prev) =>
+                              prev.map((r, i) =>
+                                i === idx ? { ...r, isHardCopper: e.target.checked } : r
+                              )
+                            )
+                          }
+                          className="w-4 h-4 accent-copper-600 rounded"
+                        />
+                      </td>
+                      <td className="py-2 px-2">
                         <select
                           value={out.storageLocationId}
                           onChange={(e) =>
@@ -874,7 +930,7 @@ export function ProductionModule({
                               )
                             )
                           }
-                          className="w-44 rounded bg-white border border-slate-300 px-2 py-1.5 text-slate-900"
+                          className="w-36 rounded bg-white border border-slate-300 px-2 py-1.5 text-slate-900"
                         >
                           {masters.locations.map((l: any) => (
                             <option key={l.id} value={l.id}>
@@ -1128,107 +1184,226 @@ export function ProductionModule({
       )}
 
       {/* Posted & Draft Batches Register */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
-        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">
-          {mode === 'RBD'
-            ? `RBD Production Batches Register (${filteredBatches.length})`
-            : `Further Processing Batches Register (${filteredBatches.length})`}
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500 uppercase">
-                <th className="py-2.5 pr-3">Batch No</th>
-                <th className="py-2.5 px-2">Date / Machine</th>
-                <th className="py-2.5 px-2">Company</th>
-                <th className="py-2.5 px-2">Size Route</th>
-                <th className="py-2.5 px-2 text-right">Input (kg)</th>
-                <th className="py-2.5 px-2 text-right">Usable Out (kg)</th>
-                <th className="py-2.5 px-2 text-right">Scrap / Loss</th>
-                <th className="py-2.5 px-2 text-right">Unexplained Diff</th>
-                <th className="py-2.5 px-2 text-right">Output Cost/kg</th>
-                <th className="py-2.5 px-2">Reconciliation</th>
-                <th className="py-2.5 pl-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {filteredBatches.map((b: any) => (
-                <tr key={b.id} className="hover:bg-slate-50">
-                  <td className="py-2.5 pr-3 font-mono font-bold">
-                    <button
-                      onClick={() => onNavigateTraceability(b.batch_number)}
-                      className="text-copper-700 hover:underline"
-                    >
-                      {b.batch_number}
-                    </button>
-                    {b.is_mixed_source && (
-                      <span className="ml-1.5 px-1.5 py-0.5 text-[9px] rounded bg-sky-100 text-sky-700">
-                        MIXED
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2.5 px-2 font-mono text-slate-600">
-                    {String(b.production_date).slice(0, 10)} • {b.machine_code}
-                  </td>
-                  <td className="py-2.5 px-2 text-slate-700">{b.owner_company_code}</td>
-                  <td className="py-2.5 px-2 font-mono text-slate-900">
-                    {Number(b.input_mm).toFixed(2)} → {Number(b.output_mm).toFixed(2)} mm
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-mono text-slate-700">
-                    {Number(b.total_input_weight_kg).toFixed(1)}
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-mono font-bold text-emerald-700">
-                    {Number(b.total_usable_output_kg).toFixed(1)} ({Number(b.yield_pct).toFixed(1)}%)
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-mono text-slate-600">
-                    {(
-                      Number(b.scrap_quantity_kg) + Number(b.recoverable_waste_kg)
-                    ).toFixed(1)}{' '}
-                    / {Number(b.process_loss_kg).toFixed(1)}
-                  </td>
-                  <td
-                    className={`py-2.5 px-2 text-right font-mono font-bold ${
-                      Number(b.unexplained_diff_kg) > 0.001
-                        ? 'text-rose-600'
-                        : 'text-slate-500'
-                    }`}
-                  >
-                    {Number(b.unexplained_diff_kg).toFixed(2)} kg
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-mono text-copper-700 font-bold">
-                    ₹{Number(b.usable_output_cost_per_kg).toFixed(2)}
-                  </td>
-                  <td className="py-2.5 px-2">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                        b.status === 'REVERSED'
-                          ? 'bg-slate-100 text-slate-500 line-through'
-                          : b.status === 'DRAFT'
-                          ? 'bg-indigo-100 text-indigo-700'
-                          : b.reconciliation_status === 'RECONCILED'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-rose-100 text-rose-700 font-bold'
-                      }`}
-                    >
-                      {b.status === 'POSTED' ? b.reconciliation_status : b.status}
-                    </span>
-                  </td>
-                  <td className="py-2.5 pl-2 text-right">
-                    {b.status === 'POSTED' && (
-                      <button
-                        onClick={() => setReversingBatch(b)}
-                        className="px-2 py-1 rounded bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 text-[10px] font-mono"
-                      >
-                        Reverse
-                      </button>
-                    )}
-                  </td>
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="p-5 pb-3">
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
+            {mode === 'RBD'
+              ? `RBD Production Batches Register (${filteredBatches.length})`
+              : `Further Processing Batches Register (${filteredBatches.length})`}
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase">
+                  <th className="py-2.5 px-2.5">Batch No</th>
+                  <th className="py-2.5 px-2.5">Date / Machine</th>
+                  <th className="py-2.5 px-2.5">Company</th>
+                  <th className="py-2.5 px-2.5">Size Route</th>
+                  <th className="py-2.5 px-2.5 text-right">Input (kg)</th>
+                  <th className="py-2.5 px-2.5 text-right">Usable Out (kg)</th>
+                  <th className="py-2.5 px-2.5 text-right">Scrap / Loss</th>
+                  <th className="py-2.5 px-2.5 text-right">Unexplained Diff</th>
+                  <th className="py-2.5 px-2.5 text-right">Output Cost/kg</th>
+                  <th className="py-2.5 px-2.5">Reconciliation</th>
+                  <th className="py-2.5 px-2.5 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {batchesPager.paginatedItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} className="py-8 text-center text-slate-400">
+                      No production batches recorded yet. Select input coils and output bobbins above to post a batch.
+                    </td>
+                  </tr>
+                ) : (
+                  batchesPager.paginatedItems.map((b: any) => (
+                    <tr key={b.id} className="hover:bg-slate-50">
+                      <td className="py-2.5 px-2.5 font-mono font-bold whitespace-nowrap">
+                        <button
+                          onClick={() => onNavigateTraceability(b.batch_number)}
+                          className="text-copper-700 hover:underline"
+                        >
+                          {b.batch_number}
+                        </button>
+                        {b.is_mixed_source && (
+                          <span className="ml-1.5 px-1.5 py-0.5 text-[9px] rounded bg-sky-100 text-sky-700">
+                            MIXED
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-2.5 font-mono text-slate-600 whitespace-nowrap">
+                        {String(b.production_date).slice(0, 10)} • {b.machine_code}
+                      </td>
+                      <td className="py-2.5 px-2.5 text-slate-700 whitespace-nowrap">{b.owner_company_code}</td>
+                      <td className="py-2.5 px-2.5 font-mono text-slate-900 whitespace-nowrap">
+                        {Number(b.input_mm).toFixed(2)} → {Number(b.output_mm).toFixed(2)} mm
+                      </td>
+                      <td className="py-2.5 px-2.5 text-right font-mono text-slate-700 whitespace-nowrap">
+                        {Number(b.total_input_weight_kg).toFixed(1)}
+                      </td>
+                      <td className="py-2.5 px-2.5 text-right font-mono font-bold text-emerald-700 whitespace-nowrap">
+                        {Number(b.total_usable_output_kg).toFixed(1)} ({Number(b.yield_pct).toFixed(1)}%)
+                      </td>
+                      <td className="py-2.5 px-2.5 text-right font-mono text-slate-600 whitespace-nowrap">
+                        {(
+                          Number(b.scrap_quantity_kg) + Number(b.recoverable_waste_kg)
+                        ).toFixed(1)}{' '}
+                        / {Number(b.process_loss_kg).toFixed(1)}
+                      </td>
+                      <td
+                        className={`py-2.5 px-2.5 text-right font-mono font-bold whitespace-nowrap ${
+                          Number(b.unexplained_diff_kg) > 0.001
+                            ? 'text-rose-600'
+                            : 'text-slate-500'
+                        }`}
+                      >
+                        {Number(b.unexplained_diff_kg).toFixed(2)} kg
+                      </td>
+                      <td className="py-2.5 px-2.5 text-right font-mono text-copper-700 font-bold whitespace-nowrap">
+                        ₹{Number(b.usable_output_cost_per_kg).toFixed(2)}
+                      </td>
+                      <td className="py-2.5 px-2.5 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                            b.status === 'REVERSED'
+                              ? 'bg-slate-100 text-slate-500 line-through'
+                              : b.status === 'DRAFT'
+                              ? 'bg-indigo-100 text-indigo-700'
+                              : b.reconciliation_status === 'RECONCILED'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-rose-100 text-rose-700 font-bold'
+                          }`}
+                        >
+                          {b.status === 'POSTED' ? b.reconciliation_status : b.status}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-2.5 text-right whitespace-nowrap">
+                        {b.status === 'POSTED' && (
+                          <button
+                            onClick={() => setReversingBatch(b)}
+                            className="px-2 py-1 rounded bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 text-[10px] font-mono"
+                          >
+                            Reverse
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
+        <PaginationBar
+          currentPage={batchesPager.currentPage}
+          totalItems={batchesPager.totalItems}
+          pageSize={batchesPager.pageSize}
+          onPageChange={batchesPager.setCurrentPage}
+          onPageSizeChange={batchesPager.setPageSize}
+          itemLabel="batches"
+        />
       </div>
+
+      {/* Individual RBD Output Bobbins Register (Sr. NO, B. Weight, G. Weight, N. Weight, Reading, Hard Flag) */}
+      {mode === 'RBD' && (
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="p-5 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                  RBD Output Bobbins Register ({rbdBobbins.length} Bobbins)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Plant RBD Bobbin Log — Showing Sr. NO, Size, Bobbin Tare (B. Weight), Gross (G. Weight), Net (N. Weight), Meter Reading, and Hard (H) Copper Flag.
+                </p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500 uppercase bg-slate-50/80">
+                    <th className="py-2.5 px-2.5">Bobbin Sr. NO</th>
+                    <th className="py-2.5 px-2.5">Internal ID</th>
+                    <th className="py-2.5 px-2.5">Date / Batch</th>
+                    <th className="py-2.5 px-2.5">Size</th>
+                    <th className="py-2.5 px-2.5 text-right">B. Weight (kg)</th>
+                    <th className="py-2.5 px-2.5 text-right">G. Weight (kg)</th>
+                    <th className="py-2.5 px-2.5 text-right">N. Weight (kg)</th>
+                    <th className="py-2.5 px-2.5 text-right">Reading (m)</th>
+                    <th className="py-2.5 px-2.5 text-center">Hard (H)</th>
+                    <th className="py-2.5 px-2.5 text-right">Rate / Cost</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 font-mono">
+                  {rbdBobbinsPager.paginatedItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="py-8 text-center font-sans text-slate-400">
+                        No RBD output bobbins recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    rbdBobbinsPager.paginatedItems.map((c: any) => (
+                      <tr key={c.id} className="hover:bg-slate-50">
+                        <td className="py-2.5 px-2.5 font-bold text-slate-900 whitespace-nowrap">
+                          {c.bobbin_number || '-'}
+                        </td>
+                        <td className="py-2.5 px-2.5 whitespace-nowrap">
+                          <button
+                            onClick={() => onNavigateTraceability(c.coil_code)}
+                            className="text-copper-700 font-bold hover:underline"
+                          >
+                            {c.coil_code}
+                          </button>
+                        </td>
+                        <td className="py-2.5 px-2.5 text-slate-600 whitespace-nowrap">
+                          {String(c.receipt_or_production_date).slice(0, 10)} •{' '}
+                          <span className="text-slate-500">{c.source_batch_number}</span>
+                        </td>
+                        <td className="py-2.5 px-2.5 font-bold text-sky-700 whitespace-nowrap">
+                          {Number(c.diameter_mm).toFixed(3)} mm
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right text-slate-600 whitespace-nowrap">
+                          {Number(c.tare_weight_kg).toFixed(2)}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right text-slate-700 whitespace-nowrap">
+                          {Number(c.gross_weight_kg).toFixed(2)}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right font-bold text-emerald-700 whitespace-nowrap">
+                          {Number(c.initial_net_weight_kg).toFixed(2)}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right text-slate-700 whitespace-nowrap">
+                          {c.reading_meters ? Number(c.reading_meters).toLocaleString('en-IN') : '-'}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-center whitespace-nowrap">
+                          {c.is_hard_copper ? (
+                            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[10px]">
+                              H (HARD)
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right text-copper-700 font-bold whitespace-nowrap">
+                          ₹{Number(c.original_purchase_rate_per_kg).toFixed(0)} → ₹
+                          {Number(c.effective_cost_per_kg).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <PaginationBar
+            currentPage={rbdBobbinsPager.currentPage}
+            totalItems={rbdBobbinsPager.totalItems}
+            pageSize={rbdBobbinsPager.pageSize}
+            onPageChange={rbdBobbinsPager.setCurrentPage}
+            onPageSizeChange={rbdBobbinsPager.setPageSize}
+            itemLabel="bobbins"
+          />
+        </div>
+      )}
     </div>
   );
 }

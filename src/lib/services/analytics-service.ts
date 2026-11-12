@@ -43,6 +43,7 @@ export async function getDashboardData(includeDemo = true) {
        COUNT(CASE WHEN c.available_weight_kg > 0 THEN 1 END)::text AS coil_count
      FROM companies comp
      LEFT JOIN copper_coils c ON c.owner_company_id = comp.id ${demoFilterCoil}
+     WHERE comp.is_active = TRUE
      GROUP BY comp.id, comp.code, comp.name
      ORDER BY comp.id`
   );
@@ -67,6 +68,7 @@ export async function getDashboardData(includeDemo = true) {
        COUNT(CASE WHEN c.available_weight_kg > 0 THEN 1 END)::text AS coil_count
      FROM copper_diameters d
      LEFT JOIN copper_coils c ON c.diameter_id = d.id ${demoFilterCoil}
+     WHERE d.is_active = TRUE
      GROUP BY d.id, d.diameter_mm, d.label, d.verification_status
      ORDER BY d.diameter_mm DESC`
   );
@@ -173,7 +175,27 @@ export async function getDashboardData(includeDemo = true) {
      LEFT JOIN copper_coils c ON c.id = m.coil_id
      WHERE 1=1 ${includeDemo ? '' : 'AND m.is_demo = FALSE'}
      ORDER BY m.id DESC
-     LIMIT 12`
+     LIMIT 250`
+  );
+
+  // 9. Monthly Purchase vs RBD Production Summary (Report Sheet)
+  const monthlySummaryRes = await query<{
+    month_index: number;
+    month_label: string;
+    rbd_month_code: string;
+    billing_copper_kg: string;
+    receive_copper_kg: string;
+    receive_aluminium_kg: string;
+    rbd_0900_kg: string;
+    rbd_1400_kg: string;
+    rbd_1800_kg: string;
+    rbd_total_kg: string;
+  }>(
+    `SELECT month_index, month_label, rbd_month_code,
+            billing_copper_kg::text, receive_copper_kg::text, receive_aluminium_kg::text,
+            rbd_0900_kg::text, rbd_1400_kg::text, rbd_1800_kg::text, rbd_total_kg::text
+     FROM monthly_plant_summary
+     ORDER BY month_index ASC`
   );
 
   const pStats = prodStatsRes.rows[0];
@@ -189,6 +211,7 @@ export async function getDashboardData(includeDemo = true) {
       ...scrapRes.rows[0],
       overall_yield_pct: overallYieldPct,
     },
+    monthlySummary: monthlySummaryRes.rows,
     byCompany: byCompanyRes.rows,
     byDiameter: byDiameterRes.rows,
     byStage: byStageRes.rows,
@@ -229,19 +252,17 @@ export async function generateReportData(params: {
         `SELECT
            inv.invoice_number AS "Invoice No",
            inv.invoice_date::text AS "Invoice Date",
-           inv.receipt_date::text AS "Receipt Date",
-           comp.name AS "Purchasing Company",
-           s.name AS "Supplier",
-           inv.copper_grade AS "Copper Grade",
-           d.diameter_mm::text || ' mm' AS "Input Diameter",
-           COALESCE(inv.supplier_lot_heat_number, '-') AS "Lot / Heat No",
-           inv.number_of_coils AS "Coils",
-           ROUND(inv.total_received_weight_kg, 2)::text AS "Total Net Weight (kg)",
-           ROUND(inv.purchase_rate, 2)::text || ' (' || inv.rate_unit || ')' AS "Invoice Rate",
-           ROUND(inv.effective_rate_per_kg, 2)::text AS "Rate per kg (INR)",
-           ROUND(inv.total_invoice_copper_value, 2)::text AS "Total Copper Value (INR)",
-           loc.name AS "Storage Location",
-           CASE WHEN inv.is_demo THEN 'DEMO' ELSE 'LIVE' END AS "Data Mode"
+           comp.name AS "Bill To",
+           s.name AS "Vendor Name",
+           inv.copper_grade AS "Particulars",
+           d.diameter_mm::text || ' mm' AS "Size",
+           inv.number_of_coils AS "No. of Coils",
+           ROUND(COALESCE(inv.vendor_billed_weight_kg, inv.total_received_weight_kg), 2)::text AS "Vendor Qty (kg)",
+           ROUND(inv.total_received_weight_kg, 2)::text AS "Receive Qty (kg)",
+           ROUND(COALESCE(inv.weight_diff_loss_kg, 0), 2)::text AS "Wt. Loss / Diff (kg)",
+           ROUND(inv.effective_rate_per_kg, 2)::text AS "Copper Avg Rate/kg (INR)",
+           ROUND(inv.total_invoice_copper_value, 2)::text AS "Total Value (INR)",
+           loc.name AS "Storage Location"
          FROM purchase_invoices inv
          JOIN companies comp ON comp.id = inv.purchasing_company_id
          JOIN suppliers s ON s.id = inv.supplier_id

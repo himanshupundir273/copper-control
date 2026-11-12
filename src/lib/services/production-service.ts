@@ -12,6 +12,8 @@ export interface BatchOutputCoilSpec {
   bobbinTypeId?: number | null;
   grossWeightKg: number | string;
   tareWeightKg: number | string;
+  readingMeters?: number | string | null;
+  isHardCopper?: boolean;
   storageLocationId: number;
   remarks?: string;
 }
@@ -671,6 +673,14 @@ export async function createOrPostProductionBatch(
       let outputCoilId: number | null = null;
       const allocatedTotalCost = out.net.times(usableOutputCostPerKg);
 
+      const readingVal =
+        out.readingMeters !== undefined &&
+        out.readingMeters !== null &&
+        String(out.readingMeters).trim() !== ''
+          ? Number(out.readingMeters)
+          : null;
+      const isHard = Boolean(out.isHardCopper);
+
       if (targetStatus === 'POSTED') {
         const outCoilCode = await generateOutputCoilCode(
           tx,
@@ -682,15 +692,16 @@ export async function createOrPostProductionBatch(
         const originType =
           processType.code === 'RBD' ? 'RBD_OUTPUT' : 'DOWNSTREAM_OUTPUT';
 
-        const processingStage =
-          (processType.resulting_stage as any) ||
-          (processType.code === 'RBD'
-            ? 'RBD_DRAWN'
-            : processType.code === 'CHINA_FINE'
-            ? 'CHINA_FINE_DRAWN'
-            : processType.code === 'HARD_COPPER'
-            ? 'HARD_COPPER'
-            : 'ANNEALED_WIRE');
+        const processingStage = isHard
+          ? 'HARD_COPPER'
+          : (processType.resulting_stage as any) ||
+            (processType.code === 'RBD'
+              ? 'RBD_DRAWN'
+              : processType.code === 'CHINA_FINE'
+              ? 'CHINA_FINE_DRAWN'
+              : processType.code === 'HARD_COPPER'
+              ? 'HARD_COPPER'
+              : 'ANNEALED_WIRE');
 
         const accumProcCost = usableOutputCostPerKg.minus(weightedAvgOriginalPurchaseRate);
 
@@ -700,6 +711,7 @@ export async function createOrPostProductionBatch(
             origin_type, source_batch_id,
             material_category_id, copper_grade, diameter_id, processing_stage,
             bobbin_type_id, bobbin_number,
+            reading_meters, is_hard_copper,
             gross_weight_kg, tare_weight_kg, initial_net_weight_kg,
             available_weight_kg, reserved_weight_kg, consumed_weight_kg,
             status, receipt_or_production_date,
@@ -710,11 +722,12 @@ export async function createOrPostProductionBatch(
             $5, $6,
             $7, $8, $9, $10,
             $11, $12,
-            $13, $14, $15,
-            $15, 0, 0,
-            'AVAILABLE', $16,
-            $17, $18, $19,
-            $20, $21, $22, $23
+            $13, $14,
+            $15, $16, $17,
+            $17, 0, 0,
+            'AVAILABLE', $18,
+            $19, $20, $21,
+            $22, $23, $24, $25
           ) RETURNING id`,
           [
             outCoilCode,
@@ -729,6 +742,8 @@ export async function createOrPostProductionBatch(
             processingStage,
             out.bobbinTypeId || null,
             out.outputBobbinNumber.trim(),
+            readingVal,
+            isHard,
             toWeightDb(out.gross),
             toWeightDb(out.tare),
             toWeightDb(out.net),
@@ -846,8 +861,9 @@ export async function createOrPostProductionBatch(
         `INSERT INTO production_batch_outputs (
           batch_id, output_coil_id, output_bobbin_number, bobbin_type_id,
           output_diameter_id, gross_weight_kg, tare_weight_kg, net_weight_kg,
+          reading_meters, is_hard_copper,
           storage_location_id, allocated_cost_per_kg, allocated_total_cost, remarks
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
         [
           batchId,
           outputCoilId,
@@ -857,6 +873,8 @@ export async function createOrPostProductionBatch(
           toWeightDb(out.gross),
           toWeightDb(out.tare),
           toWeightDb(out.net),
+          readingVal,
+          isHard,
           out.storageLocationId,
           toMoneyDb(usableOutputCostPerKg),
           toMoneyDb(allocatedTotalCost),
