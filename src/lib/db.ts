@@ -52,12 +52,19 @@ interface DbGlobalState {
 // Use versioned singleton key so Next.js HMR cleanly discards any prior deadlocked state
 const globalRoot = globalThis as unknown as {
   __copperControlTowerDbV3?: DbGlobalState;
+  __copperControlTowerDbV4?: DbGlobalState;
 };
 
-if (!globalRoot.__copperControlTowerDbV3) {
-  globalRoot.__copperControlTowerDbV3 = {};
+// Close any older V3 pool if hot-reloaded in dev
+if (globalRoot.__copperControlTowerDbV3?.pgPool) {
+  globalRoot.__copperControlTowerDbV3.pgPool.end().catch(() => {});
+  globalRoot.__copperControlTowerDbV3.pgPool = undefined;
 }
-const globalForDb = globalRoot.__copperControlTowerDbV3;
+
+if (!globalRoot.__copperControlTowerDbV4) {
+  globalRoot.__copperControlTowerDbV4 = {};
+}
+const globalForDb = globalRoot.__copperControlTowerDbV4;
 
 function isExternalPostgres(): boolean {
   if (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true' || process.env.USE_MEMORY_PG === 'true') {
@@ -112,11 +119,20 @@ async function getPGliteInstance(): Promise<PGlite> {
 
 function getPgPool(): Pool {
   if (!globalForDb.pgPool) {
-    globalForDb.pgPool = new Pool({
+    const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      max: 10,
+      // Keep max connections small (2) so Supabase Session Pooler (pool_size: 15) is never exhausted
+      // even across Next.js dev server restarts or concurrent requests.
+      max: Number(process.env.PG_POOL_MAX || 2),
+      idleTimeoutMillis: 5000,
+      connectionTimeoutMillis: 15000,
+      allowExitOnIdle: true,
       ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
     });
+    pool.on('error', (err) => {
+      console.warn('PostgreSQL idle client notice:', err.message);
+    });
+    globalForDb.pgPool = pool;
   }
   return globalForDb.pgPool;
 }
@@ -168,10 +184,32 @@ export async function runMigrations(client?: DbClient): Promise<string[]> {
   return newlyApplied;
 }
 
+async function executePoolQueryWithRetry(sql: string, params: any[] = []) {
+  const pool = getPgPool();
+  const maxAttempts = 4;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await pool.query(sql, params);
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      const isPoolerBusy =
+        msg.includes('EMAXCONNSESSION') ||
+        msg.includes('max clients reached') ||
+        msg.includes('Connection terminated unexpectedly') ||
+        err?.code === '53300';
+      if (isPoolerBusy && attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 350 * attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
+  return await pool.query(sql, params);
+}
+
 async function rawQuery<T = any>(sql: string, params: any[] = []): Promise<QueryResult<T>> {
   if (isExternalPostgres()) {
-    const pool = getPgPool();
-    const res = await pool.query(sql, params);
+    const res = await executePoolQueryWithRetry(sql, params);
     return { rows: res.rows as T[], rowCount: res.rowCount ?? res.rows.length };
   } else {
     const pglite = await getPGliteInstance();
@@ -182,8 +220,7 @@ async function rawQuery<T = any>(sql: string, params: any[] = []): Promise<Query
 
 async function rawExec(sql: string): Promise<void> {
   if (isExternalPostgres()) {
-    const pool = getPgPool();
-    await pool.query(sql);
+    await executePoolQueryWithRetry(sql);
   } else {
     const pglite = await getPGliteInstance();
     await pglite.exec(sql);

@@ -32,15 +32,15 @@ export function InwardModule({
   );
   const [supplierId, setSupplierId] = useState<number>(masters.suppliers[0]?.id || 1);
   const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [invoiceDate, setInvoiceDate] = useState('2026-11-02');
-  const [receiptDate, setReceiptDate] = useState('2026-11-02');
+  const [invoiceDate, setInvoiceDate] = useState('');
+  const [receiptDate, setReceiptDate] = useState('');
   const [materialCategoryId, setMaterialCategoryId] = useState<number>(
     masters.materialCategories[0]?.id || 1
   );
-  const [copperGrade, setCopperGrade] = useState('ETP 99.99% Continuous Cast Copper Rod');
+  const [copperGrade, setCopperGrade] = useState('');
   const [inputDiameterId, setInputDiameterId] = useState<number>(default8mm);
   const [supplierLotHeatNumber, setSupplierLotHeatNumber] = useState('');
-  const [purchaseRate, setPurchaseRate] = useState('845.00');
+  const [purchaseRate, setPurchaseRate] = useState('');
   const [rateUnit, setRateUnit] = useState<'PER_KG' | 'PER_MT'>('PER_KG');
   const [currency, setCurrency] = useState('INR');
   const [storageLocationId, setStorageLocationId] = useState<number>(
@@ -60,11 +60,11 @@ export function InwardModule({
     }>
   >([
     {
-      supplierCoilNumber: 'SUP-COIL-01',
+      supplierCoilNumber: '',
       supplierLotHeatNumber: '',
-      vendorBilledWeightKg: '3090.00',
-      grossWeightKg: '3088.00',
-      tareWeightKg: '0.00',
+      vendorBilledWeightKg: '',
+      grossWeightKg: '',
+      tareWeightKg: '',
       remarks: '',
     },
   ]);
@@ -89,11 +89,11 @@ export function InwardModule({
     setCoilRows((prev) => [
       ...prev,
       {
-        supplierCoilNumber: `SUP-COIL-0${prev.length + 1}`,
+        supplierCoilNumber: '',
         supplierLotHeatNumber: '',
-        vendorBilledWeightKg: '3090.00',
-        grossWeightKg: '3088.00',
-        tareWeightKg: '0.00',
+        vendorBilledWeightKg: '',
+        grossWeightKg: '',
+        tareWeightKg: '',
         remarks: '',
       },
     ]);
@@ -372,6 +372,7 @@ export function InwardModule({
             </div>
             <input
               type="text"
+              placeholder="e.g. ETP 99.99% Continuous Cast Copper Rod"
               value={copperGrade}
               onChange={(e) => setCopperGrade(e.target.value)}
               className="w-full h-[38px] rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm text-slate-900"
@@ -404,6 +405,7 @@ export function InwardModule({
                 type="number"
                 step="0.01"
                 required
+                placeholder="e.g. 845.00"
                 value={purchaseRate}
                 onChange={(e) => setPurchaseRate(e.target.value)}
                 className="w-full h-[38px] rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm font-mono text-copper-700 font-bold"
@@ -520,6 +522,7 @@ export function InwardModule({
                           type="number"
                           step="0.01"
                           required
+                          placeholder="0.00"
                           value={row.grossWeightKg}
                           onChange={(e) => updateCoilRow(idx, 'grossWeightKg', e.target.value)}
                           className="w-28 rounded bg-white border border-slate-300 px-2.5 py-1.5 font-mono text-slate-900 font-bold"
@@ -529,6 +532,7 @@ export function InwardModule({
                         <input
                           type="number"
                           step="0.01"
+                          placeholder="0.00"
                           value={row.tareWeightKg}
                           onChange={(e) => updateCoilRow(idx, 'tareWeightKg', e.target.value)}
                           className="w-24 rounded bg-white border border-slate-300 px-2.5 py-1.5 font-mono text-slate-600"

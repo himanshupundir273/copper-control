@@ -211,8 +211,14 @@ export async function POST(req: NextRequest) {
 
     if (action === 'ADD_BOBBIN') {
       await query(
-        `INSERT INTO bobbin_types (code, name, material, standard_tare_weight_kg, max_net_capacity_kg, verification_status)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO bobbin_types (code, name, material, standard_tare_weight_kg, max_net_capacity_kg, verification_status, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+         ON CONFLICT (code) DO UPDATE SET
+           name = EXCLUDED.name,
+           material = EXCLUDED.material,
+           standard_tare_weight_kg = EXCLUDED.standard_tare_weight_kg,
+           max_net_capacity_kg = EXCLUDED.max_net_capacity_kg,
+           is_active = TRUE`,
         [
           body.code.trim().toUpperCase(),
           body.name.trim(),

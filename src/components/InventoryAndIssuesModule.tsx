@@ -43,20 +43,18 @@ export function InventoryAndIssuesModule({
 
   const [reserveCoil, setReserveCoil] = useState<any | null>(null);
   const [reserveSubAction, setReserveSubAction] = useState<'RESERVE' | 'RELEASE'>('RESERVE');
-  const [reserveWeight, setReserveWeight] = useState('250.00');
-  const [reserveRef, setReserveRef] = useState('ORD-2026-105');
+  const [reserveWeight, setReserveWeight] = useState('');
+  const [reserveRef, setReserveRef] = useState('');
 
   // Cable Issue Form State (Module 7)
-  const [cableBatchNumber, setCableBatchNumber] = useState('RLY-QUAD-2026-108');
-  const [issueDate, setIssueDate] = useState('2026-11-02');
+  const [cableBatchNumber, setCableBatchNumber] = useState('');
+  const [issueDate, setIssueDate] = useState('');
   const [issueCompanyId, setIssueCompanyId] = useState<number>(masters.companies[0]?.id || 1);
   const [issuePlantId, setIssuePlantId] = useState<number>(masters.plants[0]?.id || 1);
   const [cableCategoryId, setCableCategoryId] = useState<number>(
     masters.cableCategories[0]?.id || 1
   );
-  const [cableDescription, setCableDescription] = useState(
-    'RDSO Underground Railway Signalling Cable Batch'
-  );
+  const [cableDescription, setCableDescription] = useState('');
   const [issueMode, setIssueMode] = useState<'COIL_WISE' | 'WEIGHT_BASED'>('COIL_WISE');
   const [conductorDiameterId, setConductorDiameterId] = useState<number>(
     masters.diameters.find((d: any) => Number(d.diameter_mm) === 1.8)?.id ||
@@ -64,18 +62,16 @@ export function InventoryAndIssuesModule({
       1
   );
   const [selectedIssueCoilId, setSelectedIssueCoilId] = useState<number>(0);
-  const [issueWeightKg, setIssueWeightKg] = useState('250.00');
+  const [issueWeightKg, setIssueWeightKg] = useState('');
   const [issueRemarks, setIssueRemarks] = useState('');
 
   // Intercompany Transfer Form State
   const [icCoilId, setIcCoilId] = useState<number>(0);
   const [icToCompanyId, setIcToCompanyId] = useState<number>(masters.companies[1]?.id || 2);
-  const [icDate, setIcDate] = useState('2026-11-02');
-  const [icDocRef, setIcDocRef] = useState('IC-CHALLAN-2026/045');
-  const [icReason, setIcReason] = useState(
-    'Intercompany copper transfer for specialty cable order execution'
-  );
-  const [icAuthBy, setIcAuthBy] = useState('Plant Commercial Head');
+  const [icDate, setIcDate] = useState('');
+  const [icDocRef, setIcDocRef] = useState('');
+  const [icReason, setIcReason] = useState('');
+  const [icAuthBy, setIcAuthBy] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
@@ -806,6 +802,7 @@ export function InventoryAndIssuesModule({
               <input
                 type="text"
                 required
+                placeholder="e.g. RLY-QUAD-2026-108"
                 value={cableBatchNumber}
                 onChange={(e) => setCableBatchNumber(e.target.value)}
                 className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs font-mono text-slate-900"
@@ -891,6 +888,7 @@ export function InventoryAndIssuesModule({
                 type="number"
                 step="0.01"
                 required
+                placeholder="0.00"
                 value={issueWeightKg}
                 onChange={(e) => setIssueWeightKg(e.target.value)}
                 className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs font-mono font-bold text-emerald-700"
@@ -925,7 +923,7 @@ export function InventoryAndIssuesModule({
             <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
               <div>
-                <strong>Weight-Based Issuance Mode Active:</strong> Because specific bobbins are not scanned in this mode, the system will deduct {issueWeightKg} kg from the company&apos;s diameter stock pool and explicitly mark source traceability as{' '}
+                <strong>Weight-Based Issuance Mode Active:</strong> Because specific bobbins are not scanned in this mode, the system will deduct {issueWeightKg || '0'} kg from the company&apos;s diameter stock pool and explicitly mark source traceability as{' '}
                 <code className="text-amber-800">UNRESOLVED_PENDING_VERIFICATION</code> rather than inventing false coil-level precision.
               </div>
             </div>
@@ -937,6 +935,7 @@ export function InventoryAndIssuesModule({
             </label>
             <input
               type="text"
+              placeholder="e.g. RDSO Underground Railway Signalling Cable Batch"
               value={cableDescription}
               onChange={(e) => setCableDescription(e.target.value)}
               className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs text-slate-900"
@@ -1031,6 +1030,7 @@ export function InventoryAndIssuesModule({
                 <input
                   type="text"
                   required
+                  placeholder="e.g. IC-CHALLAN-2026/045"
                   value={icDocRef}
                   onChange={(e) => setIcDocRef(e.target.value)}
                   className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs font-mono text-slate-900"
@@ -1044,6 +1044,7 @@ export function InventoryAndIssuesModule({
                 <input
                   type="text"
                   required
+                  placeholder="e.g. Plant Commercial Head"
                   value={icAuthBy}
                   onChange={(e) => setIcAuthBy(e.target.value)}
                   className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs text-slate-900"
@@ -1058,6 +1059,7 @@ export function InventoryAndIssuesModule({
               <input
                 type="text"
                 required
+                placeholder="e.g. Intercompany copper transfer for specialty cable order execution"
                 value={icReason}
                 onChange={(e) => setIcReason(e.target.value)}
                 className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs text-slate-900"

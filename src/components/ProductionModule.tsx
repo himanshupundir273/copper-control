@@ -101,13 +101,13 @@ export function ProductionModule({
     if (defaultOutputDia) setOutputDiameterId(defaultOutputDia);
   }, [mode, defaultInputDia, defaultOutputDia]);
 
-  const [productionDate, setProductionDate] = useState('2026-11-02');
+  const [productionDate, setProductionDate] = useState('');
   const [batchNumber, setBatchNumber] = useState('');
   const [shift, setShift] = useState('DAY');
-  const [operatorName, setOperatorName] = useState('Suresh Patel');
-  const [scrapQuantityKg, setScrapQuantityKg] = useState('6.00');
-  const [recoverableWasteKg, setRecoverableWasteKg] = useState('1.50');
-  const [processLossKg, setProcessLossKg] = useState('2.50');
+  const [operatorName, setOperatorName] = useState('');
+  const [scrapQuantityKg, setScrapQuantityKg] = useState('');
+  const [recoverableWasteKg, setRecoverableWasteKg] = useState('');
+  const [processLossKg, setProcessLossKg] = useState('');
   const [remarks, setRemarks] = useState('');
 
   // Candidate input coils matching selected company & input diameter with available_weight_kg > 0
@@ -124,13 +124,12 @@ export function ProductionModule({
     Array<{ coilId: number; consumedWeightKg: string }>
   >([]);
 
-  // Automatically select first candidate coil when switching company/diameter if empty
+  // Automatically select first candidate coil when switching company/diameter if empty, with empty weight
   useEffect(() => {
     if (candidateInputCoils.length > 0) {
       const first = candidateInputCoils[0];
-      const defaultConsume = Math.min(1000, Number(first.available_weight_kg));
       setSelectedInputs([
-        { coilId: first.id, consumedWeightKg: defaultConsume.toFixed(2) },
+        { coilId: first.id, consumedWeightKg: '' },
       ]);
     } else {
       setSelectedInputs([]);
@@ -171,24 +170,13 @@ export function ProductionModule({
   >([]);
 
   useEffect(() => {
-    const tare = Number(defaultBobbin?.standard_tare_weight_kg ?? 74.9);
     setOutputRows([
       {
-        outputBobbinNumber: mode === 'RBD' ? 'SR-1564' : 'CFN-SPL-NEW-01',
+        outputBobbinNumber: '',
         bobbinTypeId: defaultBobbin?.id || 1,
-        grossWeightKg: (445 + tare).toFixed(2),
-        tareWeightKg: tare.toFixed(2),
-        readingMeters: '32400',
-        isHardCopper: false,
-        storageLocationId: defaultLocation || 1,
-        remarks: '',
-      },
-      {
-        outputBobbinNumber: mode === 'RBD' ? 'SR-1565' : 'CFN-SPL-NEW-02',
-        bobbinTypeId: defaultBobbin?.id || 1,
-        grossWeightKg: (445 + tare).toFixed(2),
-        tareWeightKg: tare.toFixed(2),
-        readingMeters: '32400',
+        grossWeightKg: '',
+        tareWeightKg: '',
+        readingMeters: '',
         isHardCopper: false,
         storageLocationId: defaultLocation || 1,
         remarks: '',
@@ -292,23 +280,20 @@ export function ProductionModule({
       ...prev,
       {
         coilId: nextCoil.id,
-        consumedWeightKg: Math.min(500, Number(nextCoil.available_weight_kg)).toFixed(2),
+        consumedWeightKg: '',
       },
     ]);
   };
 
   const addOutputBobbin = () => {
-    const tare = Number(defaultBobbin?.standard_tare_weight_kg ?? 74.9);
     setOutputRows((prev) => [
       ...prev,
       {
-        outputBobbinNumber: `${mode === 'RBD' ? 'SR-156' : 'CFN-SPL-NEW-0'}${
-          prev.length + 4
-        }`,
+        outputBobbinNumber: '',
         bobbinTypeId: defaultBobbin?.id || 1,
-        grossWeightKg: (445 + tare).toFixed(2),
-        tareWeightKg: tare.toFixed(2),
-        readingMeters: '32400',
+        grossWeightKg: '',
+        tareWeightKg: '',
+        readingMeters: '',
         isHardCopper: false,
         storageLocationId: defaultLocation || 1,
         remarks: '',
@@ -820,6 +805,7 @@ export function ProductionModule({
                         <input
                           type="text"
                           required
+                          placeholder="e.g. SR-1564"
                           value={out.outputBobbinNumber}
                           onChange={(e) =>
                             setOutputRows((prev) =>
@@ -836,12 +822,10 @@ export function ProductionModule({
                           value={out.bobbinTypeId}
                           onChange={(e) => {
                             const bId = Number(e.target.value);
-                            const bObj = masters.bobbins.find((b: any) => b.id === bId);
-                            const newTare = Number(bObj?.standard_tare_weight_kg ?? 0).toFixed(2);
                             setOutputRows((prev) =>
                               prev.map((r, i) =>
                                 i === idx
-                                  ? { ...r, bobbinTypeId: bId, tareWeightKg: newTare }
+                                  ? { ...r, bobbinTypeId: bId }
                                   : r
                               )
                             );
@@ -859,6 +843,7 @@ export function ProductionModule({
                         <input
                           type="number"
                           step="0.01"
+                          placeholder="0.00"
                           value={out.grossWeightKg}
                           onChange={(e) =>
                             setOutputRows((prev) =>
@@ -874,6 +859,7 @@ export function ProductionModule({
                         <input
                           type="number"
                           step="0.01"
+                          placeholder="0.00"
                           value={out.tareWeightKg}
                           onChange={(e) =>
                             setOutputRows((prev) =>
@@ -970,6 +956,7 @@ export function ProductionModule({
               <input
                 type="number"
                 step="0.01"
+                placeholder="0.00"
                 value={scrapQuantityKg}
                 onChange={(e) => setScrapQuantityKg(e.target.value)}
                 className="w-full rounded bg-white border border-slate-300 px-2.5 py-2 text-sm font-mono text-slate-900"
@@ -982,6 +969,7 @@ export function ProductionModule({
               <input
                 type="number"
                 step="0.01"
+                placeholder="0.00"
                 value={recoverableWasteKg}
                 onChange={(e) => setRecoverableWasteKg(e.target.value)}
                 className="w-full rounded bg-white border border-slate-300 px-2.5 py-2 text-sm font-mono text-slate-900"
@@ -994,6 +982,7 @@ export function ProductionModule({
               <input
                 type="number"
                 step="0.01"
+                placeholder="0.00"
                 value={processLossKg}
                 onChange={(e) => setProcessLossKg(e.target.value)}
                 className="w-full rounded bg-white border border-slate-300 px-2.5 py-2 text-sm font-mono text-slate-900"
@@ -1004,6 +993,7 @@ export function ProductionModule({
                 <label className="block text-[11px] text-slate-500 mb-1">Operator Name</label>
                 <input
                   type="text"
+                  placeholder="Enter operator name"
                   value={operatorName}
                   onChange={(e) => setOperatorName(e.target.value)}
                   className="w-full rounded bg-white border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900"

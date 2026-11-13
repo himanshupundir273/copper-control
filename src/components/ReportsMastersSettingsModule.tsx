@@ -7,6 +7,7 @@ import {
   Download,
   FileSpreadsheet,
   Sliders,
+  Trash2,
   Wrench,
 } from 'lucide-react';
 import { PaginationBar, usePagination } from './PaginationBar';
@@ -69,13 +70,13 @@ export function ReportsMastersSettingsModule({
   const [newRouteOutDiaId, setNewRouteOutDiaId] = useState<number>(
     masters.diameters[1]?.id || 2
   );
-  const [newRouteWastage, setNewRouteWastage] = useState('0.75');
-  const [newRouteCost, setNewRouteCost] = useState('14.00');
+  const [newRouteWastage, setNewRouteWastage] = useState('');
+  const [newRouteCost, setNewRouteCost] = useState('');
 
   const [newBobCode, setNewBobCode] = useState('');
   const [newBobName, setNewBobName] = useState('');
-  const [newBobTare, setNewBobTare] = useState('25.00');
-  const [newBobCap, setNewBobCap] = useState('400.00');
+  const [newBobTare, setNewBobTare] = useState('');
+  const [newBobCap, setNewBobCap] = useState('');
 
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -446,7 +447,7 @@ export function ReportsMastersSettingsModule({
                       <th className="py-2 px-2">Ø (mm)</th>
                       <th className="py-2 px-2">Label & Gauge</th>
                       <th className="py-2 px-2">Verification Status</th>
-                      <th className="py-2 px-2 text-right">Toggle</th>
+                      <th className="py-2 px-2 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -473,24 +474,44 @@ export function ReportsMastersSettingsModule({
                           </span>
                         </td>
                         <td className="py-2 px-2 text-right whitespace-nowrap">
-                          <button
-                            onClick={() =>
-                              postMasterAction(
-                                {
-                                  action: 'TOGGLE_DIAMETER_VERIFICATION',
-                                  id: d.id,
-                                  verificationStatus:
-                                    d.verification_status === 'VERIFIED'
-                                      ? 'PENDING_CONFIRMATION'
-                                      : 'VERIFIED',
-                                },
-                                `Updated verification status for ${d.diameter_mm} mm.`
-                              )
-                            }
-                            className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-600"
-                          >
-                            Flip Status
-                          </button>
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                postMasterAction(
+                                  {
+                                    action: 'TOGGLE_DIAMETER_VERIFICATION',
+                                    id: d.id,
+                                    verificationStatus:
+                                      d.verification_status === 'VERIFIED'
+                                        ? 'PENDING_CONFIRMATION'
+                                        : 'VERIFIED',
+                                  },
+                                  `Updated verification status for ${d.diameter_mm} mm.`
+                                )
+                              }
+                              className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-600"
+                            >
+                              Flip Status
+                            </button>
+                            <button
+                              type="button"
+                              title={`Delete ${Number(d.diameter_mm).toFixed(2)} mm`}
+                              onClick={() =>
+                                postMasterAction(
+                                  {
+                                    action: 'REMOVE_MASTER_ITEM',
+                                    entityType: 'DIAMETER',
+                                    id: d.id,
+                                  },
+                                  `Removed copper diameter ${Number(d.diameter_mm).toFixed(2)} mm.`
+                                )
+                              }
+                              className="p-1.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -603,7 +624,7 @@ export function ReportsMastersSettingsModule({
                       <th className="py-2 px-2 text-right">Std Wastage %</th>
                       <th className="py-2 px-2 text-right">Std Cost/kg</th>
                       <th className="py-2 px-2">Status</th>
-                      <th className="py-2 px-2 text-right">Toggle</th>
+                      <th className="py-2 px-2 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -633,24 +654,44 @@ export function ReportsMastersSettingsModule({
                           </span>
                         </td>
                         <td className="py-2 px-2 text-right whitespace-nowrap">
-                          <button
-                            onClick={() =>
-                              postMasterAction(
-                                {
-                                  action: 'TOGGLE_ROUTE_VERIFICATION',
-                                  id: r.id,
-                                  verificationStatus:
-                                    r.verification_status === 'VERIFIED'
-                                      ? 'PENDING_CONFIRMATION'
-                                      : 'VERIFIED',
-                                },
-                                'Updated route verification status.'
-                              )
-                            }
-                            className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-600"
-                          >
-                            Flip
-                          </button>
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                postMasterAction(
+                                  {
+                                    action: 'TOGGLE_ROUTE_VERIFICATION',
+                                    id: r.id,
+                                    verificationStatus:
+                                      r.verification_status === 'VERIFIED'
+                                        ? 'PENDING_CONFIRMATION'
+                                        : 'VERIFIED',
+                                  },
+                                  'Updated route verification status.'
+                                )
+                              }
+                              className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-600"
+                            >
+                              Flip
+                            </button>
+                            <button
+                              type="button"
+                              title="Delete Route"
+                              onClick={() =>
+                                postMasterAction(
+                                  {
+                                    action: 'REMOVE_MASTER_ITEM',
+                                    entityType: 'ROUTE',
+                                    id: r.id,
+                                  },
+                                  `Removed route ${Number(r.input_mm).toFixed(2)} → ${Number(r.output_mm).toFixed(2)} mm.`
+                                )
+                              }
+                              className="p-1.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -740,26 +781,54 @@ export function ReportsMastersSettingsModule({
                       <th className="py-2 px-2">Name & Material</th>
                       <th className="py-2 px-2 text-right">Standard Tare (kg)</th>
                       <th className="py-2 px-2 text-right">Max Net Capacity</th>
+                      <th className="py-2 px-2 text-right"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {bobbinsPager.paginatedItems.map((b: any) => (
-                      <tr key={b.id} className="hover:bg-slate-50">
-                        <td className="py-2 px-2 font-mono font-bold text-copper-700 whitespace-nowrap">
-                          {b.code}
-                        </td>
-                        <td className="py-2 px-2 text-slate-900">
-                          {b.name}{' '}
-                          <span className="text-[10px] text-slate-500">({b.material})</span>
-                        </td>
-                        <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 whitespace-nowrap">
-                          {Number(b.standard_tare_weight_kg).toFixed(2)} kg
-                        </td>
-                        <td className="py-2 px-2 text-right font-mono text-slate-600 whitespace-nowrap">
-                          {Number(b.max_net_capacity_kg).toFixed(0)} kg
+                    {bobbinsPager.paginatedItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-6 text-center text-slate-400">
+                          No bobbin types configured yet.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      bobbinsPager.paginatedItems.map((b: any) => (
+                        <tr key={b.id} className="hover:bg-slate-50">
+                          <td className="py-2 px-2 font-mono font-bold text-copper-700 whitespace-nowrap">
+                            {b.code}
+                          </td>
+                          <td className="py-2 px-2 text-slate-900">
+                            {b.name}{' '}
+                            <span className="text-[10px] text-slate-500">({b.material})</span>
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 whitespace-nowrap">
+                            {Number(b.standard_tare_weight_kg).toFixed(2)} kg
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono text-slate-600 whitespace-nowrap">
+                            {Number(b.max_net_capacity_kg).toFixed(0)} kg
+                          </td>
+                          <td className="py-2 px-2 text-right whitespace-nowrap">
+                            <button
+                              type="button"
+                              title={`Delete ${b.code}`}
+                              onClick={() =>
+                                postMasterAction(
+                                  {
+                                    action: 'REMOVE_MASTER_ITEM',
+                                    entityType: 'BOBBIN',
+                                    id: b.id,
+                                  },
+                                  `Removed bobbin type ${b.code} (${b.name}).`
+                                )
+                              }
+                              className="p-1.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
