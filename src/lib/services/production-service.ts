@@ -38,6 +38,8 @@ export interface CreateProductionBatchInput {
   shift?: string;
   operatorName?: string;
   remarks?: string;
+  /** Required to post a batch whose accounted output weight exceeds its input weight. */
+  excessWeightReason?: string;
   isDemo?: boolean;
   actor?: string;
 }
@@ -411,7 +413,12 @@ export async function createOrPostProductionBatch(
       processLossKg,
     });
 
-    if (targetStatus === 'POSTED' && recon.exceedsInput) {
+    // Output heavier than input is allowed only with a recorded reason.
+    const excessWeightReason = recon.exceedsInput
+      ? input.excessWeightReason?.trim() || null
+      : null;
+
+    if (targetStatus === 'POSTED' && recon.exceedsInput && !excessWeightReason) {
       throw new Error(
         `Material Reconciliation Violation: Total accounted outputs (${recon.totalAccountedKg.toFixed(
           3
@@ -421,7 +428,9 @@ export async function createOrPostProductionBatch(
           3
         )}) exceed total input copper weight (${totalInputWeight.toFixed(
           3
-        )} kg) by ${recon.unexplainedDiffKg.abs().toFixed(3)} kg.`
+        )} kg) by ${recon.unexplainedDiffKg.abs().toFixed(
+          3
+        )} kg. Enter a reason for the excess weight to post this batch.`
       );
     }
 
@@ -430,6 +439,8 @@ export async function createOrPostProductionBatch(
         ? 'DRAFT'
         : recon.isReconciled
         ? 'RECONCILED'
+        : recon.exceedsInput
+        ? 'EXCESS_OUTPUT'
         : 'UNEXPLAINED_SHORTAGE';
 
     // 6. Copper Costing Engine Calculations (Module 8)
@@ -485,7 +496,8 @@ export async function createOrPostProductionBatch(
         processing_cost_per_kg, processing_cost_total,
         scrap_recovery_rate_per_kg, scrap_recovery_credit_total,
         net_batch_cost_total, usable_output_cost_per_kg, currency,
-        is_mixed_source, shift, operator_name, remarks, is_demo
+        is_mixed_source, shift, operator_name, remarks, is_demo,
+        excess_weight_reason
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9, $10,
@@ -496,7 +508,8 @@ export async function createOrPostProductionBatch(
         $23, $24,
         $25, $26,
         $27, $28, $29,
-        $30, $31, $32, $33, $34
+        $30, $31, $32, $33, $34,
+        $35
       ) RETURNING id`,
       [
         batchNumber,
@@ -533,6 +546,7 @@ export async function createOrPostProductionBatch(
         input.operatorName?.trim() || 'RBD Operator',
         input.remarks?.trim() || null,
         isDemo,
+        excessWeightReason,
       ]
     );
 
@@ -988,12 +1002,15 @@ export async function createOrPostProductionBatch(
         input.actor || input.operatorName || 'PRODUCTION_OPERATOR',
         `Batch ${batchNumber} (${processType.code}): Input ${toWeightDb(
           totalInputWeight
-        )} kg -> Output ${toWeightDb(totalUsableOutputWeight)} kg (${reconciliationStatus})`,
+        )} kg -> Output ${toWeightDb(totalUsableOutputWeight)} kg (${reconciliationStatus})${
+          excessWeightReason ? ` — excess weight reason: ${excessWeightReason}` : ''
+        }`,
         JSON.stringify({
           batchId,
           batchNumber,
           reconciliationStatus,
           unexplainedDiffKg: toWeightDb(recon.unexplainedDiffKg),
+          excessWeightReason,
           createdOutputCoils,
         }),
         isDemo,

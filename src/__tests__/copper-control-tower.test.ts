@@ -137,6 +137,48 @@ describe('Copper Control Tower — Core Manufacturing, Ledger, Traceability & Co
       })
     ).rejects.toThrow(/Material Reconciliation Violation/);
 
+    // The same excess is accepted once a reason is recorded (separate coil so the checks below are unaffected)
+    const excessInward = await createInwardReceipt({
+      purchasingCompanyId: m.compMap.ATLANTA,
+      supplierId: m.supMap['SUP-HINDALCO'],
+      invoiceNumber: 'INV-TEST-2002',
+      invoiceDate: '2026-11-01',
+      receiptDate: '2026-11-01',
+      materialCategoryId: m.matMap['CU-ETP-9999'],
+      copperGrade: 'ETP Rod',
+      inputDiameterId: m.diaMap['8.00'],
+      purchaseRate: 820,
+      rateUnit: 'PER_KG',
+      storageLocationId: m.locMap['SIL-ROD-YARD'],
+      coils: [{ supplierCoilNumber: 'SUP-2002', grossWeightKg: 1010, tareWeightKg: 10 }], // 1000 kg net
+    });
+    const excessRes = await createOrPostProductionBatch({
+      productionDate: '2026-11-02',
+      processTypeId: m.procMap.RBD,
+      machineId: m.machMap['RBD-01'],
+      inputDiameterId: m.diaMap['8.00'],
+      outputDiameterId: m.diaMap['1.80'],
+      inputs: [{ coilId: excessInward.createdCoils[0].id, consumedWeightKg: 1000 }],
+      outputs: [
+        {
+          outputBobbinNumber: 'BOB-EXC-1',
+          grossWeightKg: 1046,
+          tareWeightKg: 45, // 1001 kg net > 1000 kg input
+          storageLocationId: m.locMap['SIL-RBD-WIP'],
+        },
+      ],
+      excessWeightReason: 'Scale variance between rod yard and RBD floor weighbridges',
+    });
+    expect(excessRes.reconciliationStatus).toBe('EXCESS_OUTPUT');
+    expect(excessRes.unexplainedDiffKg).toBe('-1.0000');
+    const excessRow = await query<{ excess_weight_reason: string }>(
+      `SELECT excess_weight_reason FROM production_batches WHERE id = $1`,
+      [excessRes.batchId]
+    );
+    expect(excessRow.rows[0].excess_weight_reason).toBe(
+      'Scale variance between rod yard and RBD floor weighbridges'
+    );
+
     // Now post a valid partial consumption (consume 1,500 kg out of 2,500 kg) with an unexplained shortage of 4.00 kg
     const batchRes = await createOrPostProductionBatch({
       idempotencyKey: 'IDEMP-KEY-RBD-2001',

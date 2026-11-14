@@ -109,6 +109,7 @@ export function ProductionModule({
   const [recoverableWasteKg, setRecoverableWasteKg] = useState('');
   const [processLossKg, setProcessLossKg] = useState('');
   const [remarks, setRemarks] = useState('');
+  const [excessWeightReason, setExcessWeightReason] = useState('');
 
   // Candidate input coils matching selected company & input diameter with available_weight_kg > 0
   const candidateInputCoils = useMemo(() => {
@@ -266,6 +267,8 @@ export function ProductionModule({
     activeRouteConfig,
   ]);
 
+  const excessReasonGiven = excessWeightReason.trim().length > 0;
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<any | null>(null);
@@ -355,6 +358,9 @@ export function ProductionModule({
           shift,
           operatorName,
           remarks,
+          excessWeightReason: liveCalc.exceedsInput
+            ? excessWeightReason.trim() || undefined
+            : undefined,
           isDemo: false,
         }),
       });
@@ -364,6 +370,7 @@ export function ProductionModule({
       }
       setLastResult(json.result);
       setBatchNumber('');
+      setExcessWeightReason('');
       await onRefresh();
     } catch (err: any) {
       setError(err.message);
@@ -1017,7 +1024,9 @@ export function ProductionModule({
           <div
             className={`lg:col-span-7 rounded-xl border p-4 space-y-3 ${
               liveCalc.exceedsInput
-                ? 'border-rose-300 bg-rose-50'
+                ? excessReasonGiven
+                  ? 'border-amber-300 bg-amber-50'
+                  : 'border-rose-300 bg-rose-50'
                 : liveCalc.isReconciled
                 ? 'border-emerald-300 bg-emerald-50/70'
                 : 'border-amber-300 bg-amber-50'
@@ -1033,14 +1042,18 @@ export function ProductionModule({
               <span
                 className={`px-2.5 py-0.5 rounded text-xs font-mono font-bold ${
                   liveCalc.exceedsInput
-                    ? 'bg-rose-500 text-white'
+                    ? excessReasonGiven
+                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                      : 'bg-rose-500 text-white'
                     : liveCalc.isReconciled
                     ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
                     : 'bg-amber-100 text-amber-800 border border-amber-300'
                 }`}
               >
                 {liveCalc.exceedsInput
-                  ? 'BLOCKED: OUTPUT EXCEEDS INPUT'
+                  ? excessReasonGiven
+                    ? `EXCESS OUTPUT: +${Math.abs(liveCalc.unexplainedDiffKg).toFixed(2)} kg (REASON RECORDED)`
+                    : `EXCESS OUTPUT: +${Math.abs(liveCalc.unexplainedDiffKg).toFixed(2)} kg — REASON REQUIRED`
                   : liveCalc.isReconciled
                   ? '100% WEIGHT RECONCILED'
                   : `UNEXPLAINED VARIANCE: ${liveCalc.unexplainedDiffKg.toFixed(2)} kg`}
@@ -1084,6 +1097,22 @@ export function ProductionModule({
               </div>
             </div>
 
+            {liveCalc.exceedsInput && (
+              <div>
+                <label className="block text-[11px] font-semibold text-rose-700 mb-1">
+                  Reason for Excess Weight (required to post) — output is{' '}
+                  {Math.abs(liveCalc.unexplainedDiffKg).toFixed(2)} kg more than input
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. weighbridge/scale variance, bobbin tare mismatch, lubricant on wire"
+                  value={excessWeightReason}
+                  onChange={(e) => setExcessWeightReason(e.target.value)}
+                  className="w-full rounded bg-white border border-rose-300 px-2.5 py-2 text-xs text-slate-900"
+                />
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-2 text-xs font-mono pt-1">
               <div>
                 <span className="text-slate-500">Blended Purchase Rate: </span>
@@ -1126,7 +1155,16 @@ export function ProductionModule({
             </button>
             <button
               type="button"
-              disabled={submitting || liveCalc.exceedsInput || selectedInputs.length === 0}
+              disabled={
+                submitting ||
+                (liveCalc.exceedsInput && !excessReasonGiven) ||
+                selectedInputs.length === 0
+              }
+              title={
+                liveCalc.exceedsInput && !excessReasonGiven
+                  ? 'Enter a reason for the excess weight to post this batch'
+                  : undefined
+              }
               onClick={() => submitBatch('POSTED')}
               className="px-6 py-2.5 rounded-lg bg-copper-600 hover:bg-copper-500 disabled:opacity-40 text-white font-bold text-sm shadow-md"
             >
@@ -1244,6 +1282,8 @@ export function ProductionModule({
                         className={`py-2.5 px-2.5 text-right font-mono font-bold whitespace-nowrap ${
                           Number(b.unexplained_diff_kg) > 0.001
                             ? 'text-rose-600'
+                            : Number(b.unexplained_diff_kg) < -0.001
+                            ? 'text-amber-700'
                             : 'text-slate-500'
                         }`}
                       >
@@ -1261,11 +1301,21 @@ export function ProductionModule({
                               ? 'bg-indigo-100 text-indigo-700'
                               : b.reconciliation_status === 'RECONCILED'
                               ? 'bg-emerald-100 text-emerald-700'
+                              : b.reconciliation_status === 'EXCESS_OUTPUT'
+                              ? 'bg-amber-100 text-amber-800 font-bold'
                               : 'bg-rose-100 text-rose-700 font-bold'
                           }`}
                         >
                           {b.status === 'POSTED' ? b.reconciliation_status : b.status}
                         </span>
+                        {b.excess_weight_reason && (
+                          <div
+                            className="mt-1 max-w-[220px] truncate text-[10px] text-amber-800"
+                            title={b.excess_weight_reason}
+                          >
+                            Reason: {b.excess_weight_reason}
+                          </div>
+                        )}
                       </td>
                       <td className="py-2.5 px-2.5 text-right whitespace-nowrap">
                         {b.status === 'POSTED' && (
